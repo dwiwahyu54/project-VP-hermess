@@ -1944,8 +1944,7 @@ function getShipCurrentStatus(ship, voys) {
       inPortH: anchH + berthH,
       anchH: anchH,
       berthH: berthH,
-      activeVoy: lastVoy,
-      debugInfo
+      activeVoy: lastVoy
     };
   }
 

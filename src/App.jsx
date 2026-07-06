@@ -1889,13 +1889,26 @@ function getShipCurrentStatus(ship, voys) {
 
     // Find arrival anchorage report (arr_anchor ONLY, not shelter_arr)
     const arrAnchReport = (lastVoy.list || []).find(r => r.type === "arr_anchor");
-    // Find shift_berth report in voyage list
+    const arrBerthReport = (lastVoy.list || []).find(r => r.type === "arr_berth");
     const shiftBerthReport = (lastVoy.list || []).find(r => r.type === "shift_berth");
+    const fweArrBerth = arrBerthReport ? (arrBerthReport[evKey("FWE")] || null) : null;
     // Get FWE from shift_berth (events are spread to root after loading)
     const fweShift = shiftBerthReport ? (shiftBerthReport[evKey("FWE")] || null) : null;
 
 
-    if (arrAnchReport && shiftBerthReport && fweShift) {
+    if (arrBerthReport && fweArrBerth) {
+      // Berth arrival: FWE (arr_berth) → current time
+      berthH = diffH(fweArrBerth, now);
+
+    } else if (shiftBerthReport && fweShift) {
+      // Berth shift: FWE (shift_berth) → current time
+      berthH = diffH(fweShift, now);
+
+    } else if (arrBerthReport && !fweArrBerth) {
+      // arr_berth exists but FWE not filled yet - treat as in-port berthing start from report time
+      berthH = diffH(arrBerthReport.ts, now);
+
+    } else if (arrAnchReport && shiftBerthReport && fweShift) {
       // Anchorage: SBE/EOSV (arr_anchor) → FWE (shift_berth)
       const sbeEosv = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
       anchH = diffH(sbeEosv, fweShift);

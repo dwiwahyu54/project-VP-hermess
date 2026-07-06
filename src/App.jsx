@@ -240,6 +240,15 @@ function calcTeus(rows) {
   };
 }
 
+function getActivePortDest(ship, voy, reports) {
+  if (!ship || !voy) return { port: "", dest: "" };
+  const matches = (reports || []).filter(r => r.ship === ship && r.voy === voy && (r.port || r.destination));
+  if (!matches.length) return { port: "", dest: "" };
+  matches.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
+  const latest = matches[0];
+  return { port: latest.port || "", dest: latest.destination || "" };
+}
+
 // Get active (underway) voyage for a given ship from reports list
 // Also returns pre-departure voy if only shifting/downtime exist (no departure yet)
 function getActiveVoyage(ship, reports) {
@@ -1273,11 +1282,17 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
   const activeVoy = ship ? getActiveVoyage(ship, allReports || []) : null;
   const shipIsUnderway = !!activeVoy;
 
-  // Auto-fill voyage no for reports OTHER than departure/shift_anchor
-  // (those two are always left free for manual entry — see voyage no field UI below)
+  // Auto-fill voyage no + port/dest for reports OTHER than departure/shift_anchor
+  // Those two are always left free for manual entry — see fields UI below
   useEffect(() => {
-    if (!isEdit && ship && activeVoy && type !== "departure" && type !== "shift_anchor" && type !== "dep_anchor") {
-      fref.current.voy = activeVoy;
+    if (!isEdit && ship && activeVoy) {
+      const alwaysFree = type === "departure" || type === "shift_anchor";
+      if (!alwaysFree) {
+        fref.current.voy = activeVoy;
+        const pd = getActivePortDest(ship, activeVoy, allReports || []);
+        if (!fref.current.port && pd.port) fref.current.port = pd.port;
+        if (!fref.current.destination && pd.dest) fref.current.destination = pd.dest;
+      }
     }
   }, [ship, activeVoy, type, isEdit]);
 
@@ -1523,10 +1538,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
 
             return (
               <div style={ss.fg}>
-                <label style={ss.lbl}>
-                  Voyage No
-                  {autoLabel && <span style={{ color:C.green, marginLeft:6, fontWeight:600, textTransform:"none" }}>{autoLabel}</span>}
-                </label>
+                <label style={ss.lbl}>Voyage No {autoLabel && <span style={{ color:C.green, marginLeft:6, fontWeight:600, textTransform:"none" }}>{autoLabel}</span>}</label>
                 {isReadonly ? (
                   <div style={{ ...ss.inp, color: displayVoy ? C.text : C.muted, cursor:"not-allowed", opacity:0.85, display:"flex", alignItems:"center" }}>
                     {displayVoy || "— Pilih kapal terlebih dahulu —"}
@@ -1542,8 +1554,50 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               </div>
             );
           })()}
-          {F("Port","port",null,null,"Surabaya")}
-          {F("Destination","destination",null,null,"Surabaya")}
+          {(() => {
+            const isAlwaysEditablePD = ["departure","shift_anchor"].includes(type);
+            const pd = isAlwaysEditablePD ? {port:"",dest:""} : getActivePortDest(ship, activeVoy, allReports||[]);
+
+            let isPortReadonly = !isAlwaysEditablePD;
+            let isDestReadonly = !isAlwaysEditablePD;
+            let displayPort = isAlwaysEditablePD ? (fref.current.port || "") : (pd.port || "");
+            let displayDest = isAlwaysEditablePD ? (fref.current.destination || "") : (pd.dest || "");
+
+            if (!isEdit) {
+              if (isAlwaysEditablePD) {
+                isPortReadonly = false;
+                isDestReadonly = false;
+              } else {
+                if (displayPort) fref.current.port = displayPort;
+                if (displayDest) fref.current.destination = displayDest;
+              }
+            }
+
+            return (
+              <>
+                <div style={ss.fg}>
+                  <label style={ss.lbl}>Port {isPortReadonly && displayPort && <span style={{ color:C.green, marginLeft:6, fontWeight:600, textTransform:"none" }}>★ Auto</span>}</label>
+                  {isPortReadonly ? (
+                    <div style={{ ...ss.inp, color: displayPort ? C.text : C.muted, cursor:"not-allowed", opacity:0.85, display:"flex", alignItems:"center" }}>
+                      {displayPort || "—"}
+                    </div>
+                  ) : (
+                    <input style={ss.inp} placeholder="Surabaya" defaultValue={displayPort} key={"port-" + ship + "-" + type} onChange={e => { fref.current.port = e.target.value; }} />
+                  )}
+                </div>
+                <div style={ss.fg}>
+                  <label style={ss.lbl}>Destination {isDestReadonly && displayDest && <span style={{ color:C.green, marginLeft:6, fontWeight:600, textTransform:"none" }}>★ Auto</span>}</label>
+                  {isDestReadonly ? (
+                    <div style={{ ...ss.inp, color: displayDest ? C.text : C.muted, cursor:"not-allowed", opacity:0.85, display:"flex", alignItems:"center" }}>
+                      {displayDest || "—"}
+                    </div>
+                  ) : (
+                    <input style={ss.inp} placeholder="Surabaya" defaultValue={displayDest} key={"dest-" + ship + "-" + type} onChange={e => { fref.current.destination = e.target.value; }} />
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
         <div className="voyage-row2" style={ss.row2}>
           <div style={ss.fg}>

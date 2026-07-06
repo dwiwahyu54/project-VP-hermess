@@ -1685,9 +1685,9 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
         {["arr_berth","arr_anchor"].includes(type) && (
           <>
             <div className="voyage-row3" style={ss.row3}>
-              {F("Total Dist Run (NM)","ttl_dist",null,"number")}
-              {F("Total Steaming Time","steam",null,null,"75 H 42 M")}
-              {F("Avg Speed (Knot)","avg_spd",null,"number")}
+              {F("Total Dist Run (NM)","ttl_dist")}
+              {F("Total Steaming Time","steam")}
+              {F("Avg Speed (Knot)","avg_spd")}
             </div>
             {F("Manouver Dist (NM)","manouvr_dist",null,"number")}
             {type === "arr_berth" && F("Tug Used","tug",null,"number")}
@@ -1701,15 +1701,15 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               {F("Longitude","lon",null,null,"112°15'E")}
             </div>
             <div className="voyage-row3" style={ss.row3}>
-              {F("Total Dist Run (NM)","ttl_dist",null,"number")}
-              {F("Total Steaming Time","steam",null,null,"75 H 42 M")}
-              {F("Avg Speed (Knot)","avg_spd",null,"number")}
+              {F("Total Dist Run (NM)","ttl_dist")}
+              {F("Total Steaming Time","steam")}
+              {F("Avg Speed (Knot)","avg_spd")}
             </div>
             <hr style={ss.divider}/>
             <div className="voyage-row3" style={ss.row3}>
               {F("Weather","wx",["Fine","Cloudy","Rain","Fog","Storm"])}
               {F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}
-              {F("Wind Bf","wbf",null,"number")}
+              {F("Wind Bf","wbf")}
             </div>
             {F("Sea State","sea",["Calm","Slight","Moderate","Rough","Very Rough"])}
           </>
@@ -1729,7 +1729,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             <div className="voyage-row3" style={ss.row3}>
               {F("Weather","wx",["Fine","Cloudy","Rain","Fog","Storm"])}
               {F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}
-              {F("Wind Bf","wbf",null,"number")}
+              {F("Wind Bf","wbf")}
             </div>
             {F("Sea State","sea",["Calm Sea","Slight Sea","Moderate Sea","Rough Sea","Very Rough Sea"])}
           </>
@@ -1741,9 +1741,9 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
         {["shift_bb","shift_aa","sea_trial"].includes(type) && (
           <>
             <div className="voyage-row3" style={ss.row3}>
-              {F("Total Dist Run (NM)","ttl_dist",null,"number")}
-              {F("Total Steaming Time","steam",null,null,"75 H 42 M")}
-              {F("Avg Speed (Knot)","avg_spd",null,"number")}
+              {F("Total Dist Run (NM)","ttl_dist")}
+              {F("Total Steaming Time","steam")}
+              {F("Avg Speed (Knot)","avg_spd")}
             </div>
             {["shift_bb","shift_aa"].includes(type) && F("Manouver Dist (NM)","manouvr_dist",null,"number")}
           </>
@@ -1753,10 +1753,10 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
           <>
             <div className="voyage-row2" style={ss.row2}>{F("Latitude","lat",null,null,"05°30'S")}{F("Longitude","lon",null,null,"112°15'E")}</div>
             {F("Posisi","posisi",null,null,"Laut Jawa / Berthing Surabaya / Rede Surabaya")}
-            <div className="voyage-row3" style={ss.row3}>{F("Avg Speed (kts)","spd",null,"number")}{F("Total Avg Speed (kts)","ttl_avg_spd",null,"number")}{F("Course (°)","crs")}{F("ETA","eta_dest",null,"datetime-local",null)}</div>
-            <div className="voyage-row2" style={ss.row3}>{F("Dist Run (NM) - noon->noon","drun",null,"number")}{F("Total Dist Run (NM)","ttl_dist",null,"number")}{F("Dist Remain (NM)","drem",null,"number")}</div>
+            <div className="voyage-row3" style={ss.row3}>{F("Avg Speed (kts)","spd")}{F("Total Avg Speed (kts)","ttl_avg_spd")}{F("Course (°)","crs")}{F("ETA","eta_dest",null,"datetime-local",null)}</div>
+            <div className="voyage-row2" style={ss.row3}>{F("Dist Run (NM) - noon->noon","drun")}{F("Total Dist Run (NM)","ttl_dist")}{F("Dist Remain (NM)","drem")}</div>
             <hr style={ss.divider}/>
-            <div className="voyage-row3" style={ss.row3}>{F("Weather","wx",["Fine","Cloudy","Rain","Fog","Storm"])}{F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}{F("Wind Bf","wbf",null,"number")}</div>
+            <div className="voyage-row3" style={ss.row3}>{F("Weather","wx",["Fine","Cloudy","Rain","Fog","Storm"])}{F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}{F("Wind Bf","wbf")}</div>
             {F("Sea State","sea",["Calm sea ","Slight sea","Moderate sea","Rough sea","Very Rough sea"])}
           </>
         )}

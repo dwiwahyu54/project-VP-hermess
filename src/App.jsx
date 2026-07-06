@@ -1896,8 +1896,6 @@ function getShipCurrentStatus(ship, voys) {
     const fweShift = shiftBerthReport ? (getEventVal(shiftBerthReport, evKey("FWE")) || null) : null;
 
     if (lastVoy && lastVoy.ship === "Mavendra Mas" && lastVoy.no === "57") {
-      const debugArrBerth = (lastVoy.list || []).find(r => r.type === "arr_berth");
-      const debugFWE = debugArrBerth ? (getEventVal(debugArrBerth, evKey("FWE")) || null) : null;
     }
 
 
@@ -1973,22 +1971,8 @@ function Dashboard({ reports, onNew, user }) {
       .sort((a, b) => new Date(b.ts) - new Date(a.ts));
     return shipNoons[0]?.eta_dest || null;
   };
-
   return (
     <div>
-      {debugVoy ? (
-        <div style={{ background:"#fff", border:"2px solid #000", padding:14, marginBottom:18, fontFamily:"monospace", fontSize:12, textAlign:"left" }}>
-          <div>arr_berth: {debugArrBerth ? "FOUND" : "NOT FOUND"}</div>
-          <div>arr_berth FWE: {debugFWE || "NULL"}</div>
-          <div>shift_berth: {debugShiftBerth ? "FOUND" : "NOT FOUND"}</div>
-          <div>shift_berth FWE: {debugFWE2 || "NULL"}</div>
-          <div>all types: {(debugVoy.list || []).map(r => r.type).join(", ")}</div>
-        </div>
-      ) : (
-        <div style={{ background:"#fff", border:"2px solid red", padding:14, marginBottom:18, fontFamily:"monospace", fontSize:12 }}>
-          DEBUG: Voyage 57 Mavendra Mas NOT FOUND in computed voyages
-        </div>
-      )}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
         <div>
           <div style={{ fontSize:18, fontWeight:700, marginBottom:2 }}>Voyage Dashboard</div>

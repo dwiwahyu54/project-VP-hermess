@@ -244,10 +244,10 @@ function getActivePortDest(ship, voy, reports) {
   if (!ship || !voy) return { port: "", dest: "" };
   const startTypes = ["departure","shift_anchor","dep_anchor"];
   const candidates = (reports || [])
-    .filter(r => r.ship === ship && r.voy === voy && startTypes.includes(r.type) && (r.port || r.destination));
+    .filter(r => r.ship === ship && r.voy === voy && startTypes.includes(r.type) && (r.port || r.dest || r.destination));
   if (!candidates.length) return { port: "", dest: "" };
   candidates.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
-  return { port: candidates[0].port || "", dest: candidates[0].destination || "" };
+  return { port: candidates[0].port || "", dest: candidates[0].dest || candidates[0].destination || "" };
 }
 
 // Get active (underway) voyage for a given ship from reports list

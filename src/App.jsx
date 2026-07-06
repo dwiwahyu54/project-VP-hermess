@@ -1868,7 +1868,6 @@ function getShipCurrentStatus(ship, voys) {
       anchH: 0,
       berthH: 0,
       activeVoy: underwayVoy,
-      debugInfo: null
     };
   }
 
@@ -1899,7 +1898,6 @@ function getShipCurrentStatus(ship, voys) {
     if (lastVoy && lastVoy.ship === "Mavendra Mas" && lastVoy.no === "57") {
       const debugArrBerth = (lastVoy.list || []).find(r => r.type === "arr_berth");
       const debugFWE = debugArrBerth ? (getEventVal(debugArrBerth, evKey("FWE")) || null) : null;
-      debugInfo = { arrBerth: !!debugArrBerth, fwe: debugFWE };
     }
 
 
@@ -1981,7 +1979,6 @@ function Dashboard({ reports, onNew, user }) {
     <div>
       {debugVoy ? (
         <div style={{ background:"#fff", border:"2px solid #000", padding:14, marginBottom:18, fontFamily:"monospace", fontSize:12, textAlign:"left" }}>
-          <div style={{ fontWeight:700, marginBottom:6 }}>DEBUG: Mavendra Mas Voyage 57</div>
           <div>arr_berth: {debugArrBerth ? "FOUND" : "NOT FOUND"}</div>
           <div>arr_berth FWE: {debugFWE || "NULL"}</div>
           <div>shift_berth: {debugShiftBerth ? "FOUND" : "NOT FOUND"}</div>
@@ -2039,7 +2036,6 @@ function Dashboard({ reports, onNew, user }) {
                     {anchH > 0 && <div style={{ fontSize:11, marginBottom:2, textAlign:"left" }}><span style={{color:C.muted}}>Anch: </span><strong style={{color:C.amber}}>{fmtH(anchH)}</strong></div>}
                     {berthH > 0 && <div style={{ fontSize:11, marginBottom:2, textAlign:"left" }}><span style={{color:C.muted}}>Berth: </span><strong style={{color:C.green}}>{fmtH(berthH)}</strong></div>}
                     <div style={{ fontSize:11, textAlign:"left" }}><span style={{color:C.muted}}>In Port: </span><strong style={{color:statusColor}}>{fmtH(inPortH)}</strong></div>
-                    {debugInfo && <div style={{ fontSize:9, color:C.muted, marginTop:2, textAlign:"left" }}>debug: {JSON.stringify(debugInfo)}</div>}
                   </>
                 )}
                 {activeVoy?.dtH > 0 && (

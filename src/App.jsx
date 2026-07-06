@@ -1895,6 +1895,10 @@ function getShipCurrentStatus(ship, voys) {
     // Get FWE from shift_berth (events are spread to root after loading)
     const fweShift = shiftBerthReport ? (getEventVal(shiftBerthReport, evKey("FWE")) || null) : null;
 
+    if (lastVoy && lastVoy.ship === "Mavendra Mas" && lastVoy.no === "57") {
+      console.log("DEBUG_MAVENDRA_57", JSON.stringify({ ship: lastVoy.ship, voy: lastVoy.no, arrBerth: arrBerthReport, fwe: arrBerthReport ? (getEventVal(arrBerthReport, evKey("FWE")) || null) : null }));
+    }
+
 
     if (arrBerthReport && fweArrBerth) {
       // Berth arrival: FWE (arr_berth) → current time

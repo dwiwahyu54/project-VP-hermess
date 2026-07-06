@@ -1891,9 +1891,9 @@ function getShipCurrentStatus(ship, voys) {
     const arrAnchReport = (lastVoy.list || []).find(r => r.type === "arr_anchor");
     const arrBerthReport = (lastVoy.list || []).find(r => r.type === "arr_berth");
     const shiftBerthReport = (lastVoy.list || []).find(r => r.type === "shift_berth");
-    const fweArrBerth = arrBerthReport ? (arrBerthReport[evKey("FWE")] || null) : null;
+    const fweArrBerth = arrBerthReport ? (getEventVal(arrBerthReport, evKey("FWE")) || null) : null;
     // Get FWE from shift_berth (events are spread to root after loading)
-    const fweShift = shiftBerthReport ? (shiftBerthReport[evKey("FWE")] || null) : null;
+    const fweShift = shiftBerthReport ? (getEventVal(shiftBerthReport, evKey("FWE")) || null) : null;
 
 
     if (arrBerthReport && fweArrBerth) {

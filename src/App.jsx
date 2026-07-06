@@ -242,11 +242,12 @@ function calcTeus(rows) {
 
 function getActivePortDest(ship, voy, reports) {
   if (!ship || !voy) return { port: "", dest: "" };
-  const matches = (reports || []).filter(r => r.ship === ship && r.voy === voy && (r.port || r.destination));
-  if (!matches.length) return { port: "", dest: "" };
-  matches.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
-  const latest = matches[0];
-  return { port: latest.port || "", dest: latest.destination || "" };
+  const startTypes = ["departure","shift_anchor","dep_anchor"];
+  const candidates = (reports || [])
+    .filter(r => r.ship === ship && r.voy === voy && startTypes.includes(r.type) && (r.port || r.destination));
+  if (!candidates.length) return { port: "", dest: "" };
+  candidates.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
+  return { port: candidates[0].port || "", dest: candidates[0].destination || "" };
 }
 
 // Get active (underway) voyage for a given ship from reports list

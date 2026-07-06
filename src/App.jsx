@@ -1668,16 +1668,16 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
         {type === "departure" && (
           <>
             <div className="voyage-row3" style={ss.row3}>
-              {F("Dist To Go (NM)","dist_go",null,"number")}
+              {F("Dist To Go (NM)","dist_go")}
               {F("ETA Destination","eta_dest",null,"datetime-local",null)}
-              {F("Tug Used","tug",null,"number")}
+              {F("Tug Used","tug")}
             </div>
-            {F("Manouver Dist (NM)","manouvr_dist",null,"number")}
+            {F("Manouver Dist (NM)","manouvr_dist")}
           </>
         )}
         {type === "dep_anchor" && (
           <div className="voyage-row2" style={ss.row2}>
-            {F("Dist To Go (NM)","dist_go",null,"number")}
+            {F("Dist To Go (NM)","dist_go")}
             {F("ETA Destination","eta_dest",null,"datetime-local",null)}
           </div>
         )}
@@ -1689,8 +1689,8 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               {F("Total Steaming Time","steam")}
               {F("Avg Speed (Knot)","avg_spd")}
             </div>
-            {F("Manouver Dist (NM)","manouvr_dist",null,"number")}
-            {type === "arr_berth" && F("Tug Used","tug",null,"number")}
+            {F("Manouver Dist (NM)","manouvr_dist")}
+            {type === "arr_berth" && F("Tug Used","tug")}
           </>
         )}
 
@@ -1722,7 +1722,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               {F("Longitude","lon",null,null,"112°15'E")}
             </div>
             <div className="voyage-row2" style={ss.row2}>
-              {F("Dist To Go (NM)","dist_go",null,"number")}
+              {F("Dist To Go (NM)","dist_go")}
               {F("ETA Destination","eta_dest",null,"datetime-local",null)}
             </div>
             <hr style={ss.divider}/>
@@ -1735,8 +1735,8 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
           </>
         )}
 
-        {["shift_anchor","shift_berth"].includes(type) && F("Tug Used","tug",null,"number")}
-        {type === "shift_berth" && F("Manouver Dist (NM)","manouvr_dist",null,"number")}
+        {["shift_anchor","shift_berth"].includes(type) && F("Tug Used","tug")}
+        {type === "shift_berth" && F("Manouver Dist (NM)","manouvr_dist")}
 
         {["shift_bb","shift_aa","sea_trial"].includes(type) && (
           <>
@@ -1745,7 +1745,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               {F("Total Steaming Time","steam")}
               {F("Avg Speed (Knot)","avg_spd")}
             </div>
-            {["shift_bb","shift_aa"].includes(type) && F("Manouver Dist (NM)","manouvr_dist",null,"number")}
+            {["shift_bb","shift_aa"].includes(type) && F("Manouver Dist (NM)","manouvr_dist")}
           </>
         )}
 

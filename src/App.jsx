@@ -1979,6 +1979,20 @@ function Dashboard({ reports, onNew, user }) {
 
   return (
     <div>
+      {debugVoy ? (
+        <div style={{ background:"#fff", border:"2px solid #000", padding:14, marginBottom:18, fontFamily:"monospace", fontSize:12, textAlign:"left" }}>
+          <div style={{ fontWeight:700, marginBottom:6 }}>DEBUG: Mavendra Mas Voyage 57</div>
+          <div>arr_berth: {debugArrBerth ? "FOUND" : "NOT FOUND"}</div>
+          <div>arr_berth FWE: {debugFWE || "NULL"}</div>
+          <div>shift_berth: {debugShiftBerth ? "FOUND" : "NOT FOUND"}</div>
+          <div>shift_berth FWE: {debugFWE2 || "NULL"}</div>
+          <div>all types: {(debugVoy.list || []).map(r => r.type).join(", ")}</div>
+        </div>
+      ) : (
+        <div style={{ background:"#fff", border:"2px solid red", padding:14, marginBottom:18, fontFamily:"monospace", fontSize:12 }}>
+          DEBUG: Voyage 57 Mavendra Mas NOT FOUND in computed voyages
+        </div>
+      )}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
         <div>
           <div style={{ fontSize:18, fontWeight:700, marginBottom:2 }}>Voyage Dashboard</div>

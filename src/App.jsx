@@ -409,9 +409,10 @@ function buildWA(r) {
   const L = [
     `*${rt?.label?.toUpperCase()} — MV ${r.ship}*`,
     (() => {
-      const isArrival = ["arr_berth","arr_anchor","shift_anchor","shift_berth"].includes(r.type);
+      const isArrival = ["arr_berth","arr_anchor"].includes(r.type);
+      const isShift = ["shift_anchor","shift_berth"].includes(r.type);
       const isDeparture = ["departure","dep_anchor","shelter_dep","sea_trial"].includes(r.type);
-      if (isArrival) return `Voyage: ${r.voy || "-"} | Arrival Port: ${r.port || "-"}`;
+      if (isArrival || isShift) return `Voyage: ${r.voy || "-"} | Port: ${r.port || "-"}`;
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
       return `Voyage: ${r.voy || "-"} | ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
     })(),

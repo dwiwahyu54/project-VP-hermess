@@ -408,7 +408,13 @@ function buildWA(r) {
   const rt = RT.find(t => t.id === r.type);
   const L = [
     `*${rt?.label?.toUpperCase()} — MV ${r.ship}*`,
-    `Voyage: ${r.voy || "-"} | Port: ${r.port || "-"} | Destination: ${r.dest || "-"}`,
+    (() => {
+      const isArrival = ["arr_berth","arr_anchor"].includes(r.type);
+      const isDeparture = ["departure","dep_anchor","shift_anchor","shift_berth","shelter_dep","sea_trial"].includes(r.type);
+      if (isArrival) return `Voyage: ${r.voy || "-"} | Arrival Port: ${r.port || "-"}`;
+      if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
+      return `Voyage: ${r.voy || "-"} | ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
+    })(),
     `Date/Time: ${fmtDT(r.ts)}`,
     `Master: ${r.master || "-"}`,
     `---`,

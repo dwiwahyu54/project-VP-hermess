@@ -1303,9 +1303,13 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
   // Those two are always left free for manual entry — see fields UI below
   useEffect(() => {
     if (ship && activeVoy) {
-      const pd = getActivePortDest(ship, activeVoy, allReports || [], type);
-      if (!fref.current.port && pd.port) fref.current.port = pd.port;
-      if (!fref.current.destination && pd.dest) fref.current.destination = pd.dest;
+      const alwaysFree = type === "departure" || type === "shift_anchor";
+      if (!alwaysFree) {
+        fref.current.voy = activeVoy;
+        const pd = getActivePortDest(ship, activeVoy, allReports || [], type);
+        if (!fref.current.port && pd.port) fref.current.port = pd.port;
+        if (!fref.current.destination && pd.dest) fref.current.destination = pd.dest;
+      }
     }
   }, [ship, activeVoy, type, isEdit]);
 

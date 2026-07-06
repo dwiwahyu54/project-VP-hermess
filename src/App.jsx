@@ -1283,7 +1283,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
 
   const [tsValue, setTsValue] = useState(() => isoToLocalInput(editReport?.ts));
   const [etaValue, setEtaValue] = useState(() => isoToLocalInput(editReport?.eta_dest));
-  const fref = useRef(editReport ? { ...initForm(), ...editReport } : initForm());
+  const fref = useRef(editReport ? { ...initForm(), ...editReport, destination: editReport.destination || editReport.dest || "" } : initForm());
   const [type, setType]   = useState(editReport ? editReport.type : "departure");
   const [ship, setShip]   = useState(editReport ? editReport.ship : (user?.ship || ""));
   const [dtDur, setDtDur] = useState(() => fmtH(diffH(fref.current.t0, fref.current.t1)));

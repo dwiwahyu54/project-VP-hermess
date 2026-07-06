@@ -414,7 +414,7 @@ function buildWA(r) {
       const isDeparture = ["departure","dep_anchor","shelter_dep","sea_trial"].includes(r.type);
       if (isArrival || isShift) return `Voyage: ${r.voy || "-"} | Port: ${r.port || "-"}`;
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
-      return `Voyage: ${r.voy || "-"} | ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
+      return `Voyage: ${r.voy || "-"} | Port: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
     })(),
     `Date/Time: ${fmtDT(r.ts)}`,
     `Master: ${r.master || "-"}`,

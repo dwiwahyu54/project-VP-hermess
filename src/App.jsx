@@ -1867,7 +1867,8 @@ function getShipCurrentStatus(ship, voys) {
       inPortH: null,
       anchH: 0,
       berthH: 0,
-      activeVoy: underwayVoy
+      activeVoy: underwayVoy,
+      debugInfo: null
     };
   }
 
@@ -1896,7 +1897,9 @@ function getShipCurrentStatus(ship, voys) {
     const fweShift = shiftBerthReport ? (getEventVal(shiftBerthReport, evKey("FWE")) || null) : null;
 
     if (lastVoy && lastVoy.ship === "Mavendra Mas" && lastVoy.no === "57") {
-      console.log("DEBUG_MAVENDRA_57", JSON.stringify({ ship: lastVoy.ship, voy: lastVoy.no, arrBerth: arrBerthReport, fwe: arrBerthReport ? (getEventVal(arrBerthReport, evKey("FWE")) || null) : null }));
+      const debugArrBerth = (lastVoy.list || []).find(r => r.type === "arr_berth");
+      const debugFWE = debugArrBerth ? (getEventVal(debugArrBerth, evKey("FWE")) || null) : null;
+      debugInfo = { arrBerth: !!debugArrBerth, fwe: debugFWE };
     }
 
 
@@ -1943,7 +1946,8 @@ function getShipCurrentStatus(ship, voys) {
       inPortH: anchH + berthH,
       anchH: anchH,
       berthH: berthH,
-      activeVoy: lastVoy
+      activeVoy: lastVoy,
+      debugInfo
     };
   }
 
@@ -2021,6 +2025,7 @@ function Dashboard({ reports, onNew, user }) {
                     {anchH > 0 && <div style={{ fontSize:11, marginBottom:2, textAlign:"left" }}><span style={{color:C.muted}}>Anch: </span><strong style={{color:C.amber}}>{fmtH(anchH)}</strong></div>}
                     {berthH > 0 && <div style={{ fontSize:11, marginBottom:2, textAlign:"left" }}><span style={{color:C.muted}}>Berth: </span><strong style={{color:C.green}}>{fmtH(berthH)}</strong></div>}
                     <div style={{ fontSize:11, textAlign:"left" }}><span style={{color:C.muted}}>In Port: </span><strong style={{color:statusColor}}>{fmtH(inPortH)}</strong></div>
+                    {debugInfo && <div style={{ fontSize:9, color:C.muted, marginTop:2, textAlign:"left" }}>debug: {JSON.stringify(debugInfo)}</div>}
                   </>
                 )}
                 {activeVoy?.dtH > 0 && (

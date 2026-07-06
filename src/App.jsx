@@ -1993,7 +1993,7 @@ function Dashboard({ reports, onNew, user }) {
             const timeDisplay = status === "UNDERWAY" ? fmtH(sailingH || 0) : fmtH(inPortH || 0);
             const timeLabel = status === "UNDERWAY" ? "Sailing" : "In Port";
             // Port: UNDERWAY from departure, IN PORT from arrival
-            const portDisplay = status === "UNDERWAY" ? activeVoy?.dep?.port : activeVoy?.arr?.port;
+            const portDisplay = status === "UNDERWAY" ? activeVoy?.dep?.port : (activeVoy?.dep?.dest || activeVoy?.arr?.port);
             // Destination for UNDERWAY
             const destDisplay = status === "UNDERWAY" ? activeVoy?.dep?.dest : null;
             // ETA from latest noon report (updates daily), fallback to departure ETA

@@ -1302,14 +1302,10 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
   // Auto-fill voyage no + port/dest for reports OTHER than departure/shift_anchor
   // Those two are always left free for manual entry — see fields UI below
   useEffect(() => {
-    if (!isEdit && ship && activeVoy) {
-      const alwaysFree = type === "departure" || type === "shift_anchor";
-      if (!alwaysFree) {
-        fref.current.voy = activeVoy;
-        const pd = getActivePortDest(ship, activeVoy, allReports || [], type);
-        if (!fref.current.port && pd.port) fref.current.port = pd.port;
-        if (!fref.current.destination && pd.dest) fref.current.destination = pd.dest;
-      }
+    if (ship && activeVoy) {
+      const pd = getActivePortDest(ship, activeVoy, allReports || [], type);
+      if (!fref.current.port && pd.port) fref.current.port = pd.port;
+      if (!fref.current.destination && pd.dest) fref.current.destination = pd.dest;
     }
   }, [ship, activeVoy, type, isEdit]);
 
@@ -1993,7 +1989,7 @@ function Dashboard({ reports, onNew, user }) {
             const timeDisplay = status === "UNDERWAY" ? fmtH(sailingH || 0) : fmtH(inPortH || 0);
             const timeLabel = status === "UNDERWAY" ? "Sailing" : "In Port";
             // Port: UNDERWAY from departure, IN PORT from arrival
-            const portDisplay = status === "UNDERWAY" ? activeVoy?.dep?.port : (activeVoy?.dep?.dest || activeVoy?.arr?.port);
+            const portDisplay = status === "UNDERWAY" ? activeVoy?.dep?.dest : activeVoy?.arr?.port;
             // Destination for UNDERWAY
             const destDisplay = status === "UNDERWAY" ? activeVoy?.dep?.dest : null;
             // ETA from latest noon report (updates daily), fallback to departure ETA

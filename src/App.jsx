@@ -419,7 +419,10 @@ function buildWA(r) {
       const isArrival = ["arr_berth","arr_anchor"].includes(r.type);
       const isShift = ["shift_anchor","shift_berth"].includes(r.type);
       const isDeparture = ["departure","dep_anchor","shelter_dep","sea_trial"].includes(r.type);
-      if (isArrival || isShift) return `Voyage: ${r.voy || "-"} | Port: ${r.port || "-"}`;
+      if (isArrival || isShift) {
+        const displayPort = r.dest || r.port || "-";
+        return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
+      }
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
       return `Voyage: ${r.voy || "-"} | Port: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
     })(),

@@ -1374,6 +1374,10 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
       setVoyError(`MV ${ship} masih dalam Voyage ${activeVoy}. Selesaikan voyage terlebih dahulu.`);
       return;
     }
+    if (!isEdit && type === "departure" && fref.current.voy === activeVoy) {
+      setVoyError(`MV ${ship} sedang dalam Voyage ${activeVoy}. Departure harus menggunakan voyage baru yang berbeda dari voyage active.`);
+      return;
+    }
     // Auto-fill voy if empty and ship has active voyage
     if (!fref.current.voy && activeVoy) fref.current.voy = activeVoy;
     if (!fref.current.voy) { alert("Isi Voyage No terlebih dahulu!"); return; }

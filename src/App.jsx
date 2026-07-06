@@ -1080,9 +1080,9 @@ function CargoSection({ fref }) {
           {/* FULL */}
           <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 80px", gap:8, marginBottom:7, alignItems:"center" }}>
             <div style={{ fontSize:11, fontWeight:500 }}>Full</div>
-            <input style={ss.inp} type="number" placeholder="0" value={row.full_t}
+            <input style={ss.inp} type="text" placeholder="0" value={row.full_t}
               onChange={e => updateRow(idx, "full_t", e.target.value)}/>
-            <input style={ss.inp} type="number" placeholder="0" value={row.full_f}
+            <input style={ss.inp} type="text" placeholder="0" value={row.full_f}
               onChange={e => updateRow(idx, "full_f", e.target.value)}/>
             <div style={{ fontSize:12, fontWeight:600, color:C.accent, textAlign:"center" }}>
               {(() => {
@@ -1097,9 +1097,9 @@ function CargoSection({ fref }) {
           {/* EMPTY */}
           <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 80px", gap:8, marginBottom:7, alignItems:"center" }}>
             <div style={{ fontSize:11, fontWeight:500 }}>Empty</div>
-            <input style={ss.inp} type="number" placeholder="0" value={row.empty_t}
+            <input style={ss.inp} type="text" placeholder="0" value={row.empty_t}
               onChange={e => updateRow(idx, "empty_t", e.target.value)}/>
-            <input style={ss.inp} type="number" placeholder="0" value={row.empty_f}
+            <input style={ss.inp} type="text" placeholder="0" value={row.empty_f}
               onChange={e => updateRow(idx, "empty_f", e.target.value)}/>
             <div style={{ fontSize:12, fontWeight:600, color:C.accent, textAlign:"center" }}>
               {(() => {
@@ -1114,9 +1114,9 @@ function CargoSection({ fref }) {
           {/* FULL REFER */}
           <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 80px", gap:8, marginBottom:7, alignItems:"center" }}>
             <div style={{ fontSize:11, fontWeight:500 }}>Full Refer</div>
-            <input style={ss.inp} type="number" placeholder="0" value={row.refer_t}
+            <input style={ss.inp} type="text" placeholder="0" value={row.refer_t}
               onChange={e => updateRow(idx, "refer_t", e.target.value)}/>
-            <input style={ss.inp} type="number" placeholder="0" value={row.refer_f}
+            <input style={ss.inp} type="text" placeholder="0" value={row.refer_f}
               onChange={e => updateRow(idx, "refer_f", e.target.value)}/>
             <div style={{ fontSize:12, fontWeight:600, color:C.accent, textAlign:"center" }}>
               {(() => {
@@ -1131,9 +1131,9 @@ function CargoSection({ fref }) {
           {/* MT REFER */}
           <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 80px", gap:8, marginBottom:7, alignItems:"center" }}>
             <div style={{ fontSize:11, fontWeight:500 }}>MT Refer</div>
-            <input style={ss.inp} type="number" placeholder="0" value={row.mt_refer_t}
+            <input style={ss.inp} type="text" placeholder="0" value={row.mt_refer_t}
               onChange={e => updateRow(idx, "mt_refer_t", e.target.value)}/>
-            <input style={ss.inp} type="number" placeholder="0" value={row.mt_refer_f}
+            <input style={ss.inp} type="text" placeholder="0" value={row.mt_refer_f}
               onChange={e => updateRow(idx, "mt_refer_f", e.target.value)}/>
             <div style={{ fontSize:12, fontWeight:600, color:C.accent, textAlign:"center" }}>
               {(() => {
@@ -1148,9 +1148,9 @@ function CargoSection({ fref }) {
           {/* ISO TANK */}
           <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 80px", gap:8, marginBottom:7, alignItems:"center" }}>
             <div style={{ fontSize:11, fontWeight:500 }}>ISO Tank</div>
-            <input style={ss.inp} type="number" placeholder="0" value={row.iso_tank_t}
+            <input style={ss.inp} type="text" placeholder="0" value={row.iso_tank_t}
               onChange={e => updateRow(idx, "iso_tank_t", e.target.value)}/>
-            <input style={ss.inp} type="number" placeholder="0" value={row.iso_tank_f}
+            <input style={ss.inp} type="text" placeholder="0" value={row.iso_tank_f}
               onChange={e => updateRow(idx, "iso_tank_f", e.target.value)}/>
             <div style={{ fontSize:12, fontWeight:600, color:C.accent, textAlign:"center" }}>
               {(() => {
@@ -1165,9 +1165,9 @@ function CargoSection({ fref }) {
           {/* OFFICE CONTAINER */}
           <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 80px", gap:8, marginBottom:7, alignItems:"center" }}>
             <div style={{ fontSize:11, fontWeight:500 }}>Office Cont</div>
-            <input style={ss.inp} type="number" placeholder="0" value={row.office_t}
+            <input style={ss.inp} type="text" placeholder="0" value={row.office_t}
               onChange={e => updateRow(idx, "office_t", e.target.value)}/>
-            <input style={ss.inp} type="number" placeholder="0" value={row.office_f}
+            <input style={ss.inp} type="text" placeholder="0" value={row.office_f}
               onChange={e => updateRow(idx, "office_f", e.target.value)}/>
             <div style={{ fontSize:12, fontWeight:600, color:C.accent, textAlign:"center" }}>
               {(() => {
@@ -1182,9 +1182,9 @@ function CargoSection({ fref }) {
           {/* FLATRACK */}
           <div style={{ display:"grid", gridTemplateColumns:"70px 1fr 1fr 80px", gap:8, marginBottom:7, alignItems:"center" }}>
             <div style={{ fontSize:11, fontWeight:500 }}>Flatrack</div>
-            <input style={ss.inp} type="number" placeholder="0" value={row.flatrack_t}
+            <input style={ss.inp} type="text" placeholder="0" value={row.flatrack_t}
               onChange={e => updateRow(idx, "flatrack_t", e.target.value)}/>
-            <input style={ss.inp} type="number" placeholder="0" value={row.flatrack_f}
+            <input style={ss.inp} type="text" placeholder="0" value={row.flatrack_f}
               onChange={e => updateRow(idx, "flatrack_f", e.target.value)}/>
             <div style={{ fontSize:12, fontWeight:600, color:C.accent, textAlign:"center" }}>
               {(() => {
@@ -1199,7 +1199,7 @@ function CargoSection({ fref }) {
           {/* Tonase */}
           <div style={{ display:"grid", gridTemplateColumns:"70px 1fr", gap:8, alignItems:"center", marginTop:4 }}>
             <div style={{ fontSize:11, fontWeight:500, color:C.amber }}>Tonase</div>
-            <input style={{ ...ss.inp, borderColor:"rgba(251,191,36,0.4)" }} type="number" placeholder="0" value={row.ton||""}
+            <input style={{ ...ss.inp, borderColor:"rgba(251,191,36,0.4)" }} type="text" placeholder="0" value={row.ton||""}
               onChange={e => updateRow(idx,"ton",e.target.value)}/>
           </div>
         </div>
@@ -1231,17 +1231,17 @@ function CargoSection({ fref }) {
       {/* Ballast + Draft */}
       <div className="voyage-row3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:11 }}>
         <div style={ss.fg}><label style={ss.lbl}>Ballast (Ton)</label>
-          <input style={ss.inp} type="number" step="0.1" defaultValue={fref.current.ballast}
+          <input style={ss.inp} type="text" step="0.1" defaultValue={fref.current.ballast}
             onChange={e=>{fref.current.ballast=e.target.value;}}/></div>
         <div style={ss.fg}><label style={ss.lbl}>GM (M)</label>
-          <input style={ss.inp} type="number" step="0.1" defaultValue={fref.current.gm}
+          <input style={ss.inp} type="text" step="0.1" defaultValue={fref.current.gm}
             onChange={e=>{fref.current.gm=e.target.value;}}/></div>
         <div/>
       </div>
       <div className="voyage-row3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:11 }}>
         {[{l:"Draft F (M)",k:"drf"},{l:"Draft M (M)",k:"drm"},{l:"Draft A (M)",k:"dra"}].map(x=>(
           <div key={x.k} style={ss.fg}><label style={ss.lbl}>{x.l}</label>
-            <input style={ss.inp} type="number" step="0.01" defaultValue={fref.current[x.k]}
+            <input style={ss.inp} type="text" step="0.01" defaultValue={fref.current[x.k]}
               onChange={e=>{fref.current[x.k]=e.target.value;}}/></div>
         ))}
       </div>
@@ -2532,11 +2532,11 @@ function RunningHoursInput({ rhKey, current, onSave }) {
       <div className="voyage-row2" style={ss.row2}>
         <div style={ss.fg}>
           <label style={ss.lbl}>Running Hours ME</label>
-          <input ref={meRef} style={ss.inp} type="number" placeholder="0" defaultValue={current.me}/>
+          <input ref={meRef} style={ss.inp} type="text" placeholder="0" defaultValue={current.me}/>
         </div>
         <div style={ss.fg}>
           <label style={ss.lbl}>Running Hours AE</label>
-          <input ref={aeRef} style={ss.inp} type="number" placeholder="0" defaultValue={current.ae}/>
+          <input ref={aeRef} style={ss.inp} type="text" placeholder="0" defaultValue={current.ae}/>
         </div>
       </div>
       <button style={ss.btn} onClick={() => onSave(meRef.current.value, aeRef.current.value)}>
@@ -2859,10 +2859,10 @@ function RHConsPage({ runningHours, setRunningHours, user }) {
                         {isEditing ? (
                           <>
                             <td style={ss.td(i%2)}>
-                              <input style={{ ...ss.inp, padding:"4px 8px", width:80 }} type="number" defaultValue={v.me} ref={editMeRef}/>
+                              <input style={{ ...ss.inp, padding:"4px 8px", width:80 }} type="text" defaultValue={v.me} ref={editMeRef}/>
                             </td>
                             <td style={ss.td(i%2)}>
-                              <input style={{ ...ss.inp, padding:"4px 8px", width:80 }} type="number" defaultValue={v.ae} ref={editAeRef}/>
+                              <input style={{ ...ss.inp, padding:"4px 8px", width:80 }} type="text" defaultValue={v.ae} ref={editAeRef}/>
                             </td>
                             <td style={ss.td(i%2)}>
                               <button style={{ ...ss.btnSm(true), padding:"4px 8px" }} onClick={()=>handleUpdateRh(k)}>✓</button>
@@ -2948,7 +2948,7 @@ function RHConsPage({ runningHours, setRunningHours, user }) {
                 <label style={ss.lbl}>Cons ME (KL)</label>
                 <input
                   style={ss.inp}
-                  type="number"
+                  type="text"
                   placeholder="0"
                   defaultValue={consMe[`${consMeShip}|${consMeYear}|${consMeMonth}`]?.cons_me || ""}
                   onKeyDown={e => {
@@ -3031,7 +3031,7 @@ function RHConsPage({ runningHours, setRunningHours, user }) {
                           {isEditing ? (
                             <>
                               <td style={ss.td(i%2)}>
-                                <input style={{ ...ss.inp, padding:"4px 8px", width:80 }} type="number" defaultValue={v.cons_me} ref={editConsMeRef}/>
+                                <input style={{ ...ss.inp, padding:"4px 8px", width:80 }} type="text" defaultValue={v.cons_me} ref={editConsMeRef}/>
                               </td>
                               <td style={ss.td(i%2)}>
                                 <button style={{ ...ss.btnSm(true), padding:"4px 8px" }} onClick={()=>handleUpdateConsMe(k)}>✓</button>

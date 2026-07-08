@@ -3777,7 +3777,7 @@ function ManagementReport({ reports, runningHours, user }) {
           style={{ background:C.bg3, border:`1px solid ${C.amber}30`, borderTop:`3px solid ${C.amber}`, borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
           onClick={() => setShowAnchorageDetail(s => !s)}
         >
-          <div style={{ fontSize:22, fontWeight:700, color:C.amber, marginBottom:4 }}>{(totalAnchorageH/24).toFixed(2)} hari</div>
+          <div style={{ fontSize:22, fontWeight:700, color:C.amber, marginBottom:4 }}>{(totalAnchH/24).toFixed(2)} hari</div>
           <div style={{ fontSize:10, color:C.muted }}>Anchorage Time</div>
           <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Arr.Anc SBE/EOSV → Shift Berth FWE {showAnchorageDetail ? "▲" : "▼"}</div>
         </div>
@@ -3785,7 +3785,7 @@ function ManagementReport({ reports, runningHours, user }) {
           style={{ background:C.bg3, border:`1px solid ${C.horizon}30`, borderTop:`3px solid ${C.horizon}`, borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
           onClick={() => setShowBerthingDetail(s => !s)}
         >
-          <div style={{ fontSize:22, fontWeight:700, color:C.horizon, marginBottom:4 }}>{(totalBerthingH/24).toFixed(2)} hari</div>
+          <div style={{ fontSize:22, fontWeight:700, color:C.horizon, marginBottom:4 }}>{(totalBerthH/24).toFixed(2)} hari</div>
           <div style={{ fontSize:10, color:C.muted }}>Berthing Time</div>
           <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Berth FWE → Next Voyage BOSV {showBerthingDetail ? "▲" : "▼"}</div>
         </div>

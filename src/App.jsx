@@ -2560,12 +2560,9 @@ function getAnchorageTimeEntries(reports) {
     if (!t0) return;
 
     const shiftBerth = (v.list||[]).find(r => r.type === "shift_berth");
-    // If shift_berth with FWE exists, anchorage has ended at that point.
-    // Otherwise the vessel is STILL at anchorage — use "now" as the open end,
-    // so month-by-month splitting still counts the ongoing duration correctly.
     const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
 
-    entries.push({ ship: v.ship, voy: v.no, t0, t1 });
+    entries.push({ ship: v.ship, voy: v.no, t0, t1, hours: diffH(t0, t1) });
   });
   return entries;
 }
@@ -2587,13 +2584,9 @@ function getBerthingTimeEntries(reports) {
       if (!t0) return;
 
       const nextV = shipVoys[idx+1];
-      // If the next voyage's BOSV exists, berthing ended there.
-      // Otherwise the vessel is STILL at berth (next voyage hasn't departed
-      // yet, or doesn't exist) — use "now" as the open end so ongoing
-      // berthing time still counts correctly when split by month.
       const t1 = nextV?.bosv || new Date().toISOString();
 
-      entries.push({ ship: v.ship, voy: v.no, t0, t1 });
+      entries.push({ ship: v.ship, voy: v.no, t0, t1, hours: diffH(t0, t1) });
     });
   });
   return entries;

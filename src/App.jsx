@@ -2054,13 +2054,13 @@ function Dashboard({ reports, onNew, user }) {
      </table>
       </div>
 
-      <VesselReport reports={reports} voys={voys} user={user}/>
+      <VesselReport reports={reports} voys={voys} user={user} runningHours={runningHours}/>
     </div>
   );
 }
 
 // === EXCEL-STYLE VESSEL REPORT ================================================
-function VesselReport({ reports, voys, user }) {
+function VesselReport({ reports, voys, user, runningHours }) {
   const [fYear, setFYear] = useState("");
   const [fMonth, setFMonth] = useState("");
 
@@ -2260,6 +2260,16 @@ function VesselReport({ reports, voys, user }) {
         targetMeDay: 0, realisasi: "0.0%",
         aveSpdPrev: prevMonthIdx !== null && !isNaN(Number(fYear)) ? Number(getAvgSpeedForShipMonth(ship, fMonth==="0" ? String(Number(fYear)-1) : fYear, prevMonthIdx)) : null,
         aveSpdCur: fMonth !== "" && fYear !== "" ? Number(getAvgSpeedForShipMonth(ship, fYear, Number(fMonth))) : null,
+        atPortDays: (() => {
+          if (!runningHours || daysInMonth <= 0) return null;
+          const y = fYear;
+          const m = Number(fMonth);
+          if (!y && y !== 0) return null;
+          if (m === "" || isNaN(m)) return null;
+          const rhMeVal = parseFloat(runningHours[`${ship}|${y}|${m}`]?.me) || 0;
+          const val = berthH/24 - (rhMeVal/24) - (daysInMonth - dtH/24 - berthH/24 - anchH/24);
+          return Math.max(0, val);
+        })(),
       };
     });
   })({ fYear, fMonth, reports, voys });
@@ -2337,7 +2347,7 @@ function VesselReport({ reports, voys, user }) {
                 <td style={{ ...ss.td(i%2), fontWeight:600, whiteSpace:"nowrap" }}>{r.ship}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.sailDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.anchDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.portDays.toFixed(2)}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.atPortDays != null ? r.atPortDays.toFixed(2) : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.dtDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.totalHari > 0 ? r.totalHari.toFixed(0) : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.miles.toLocaleString()}</td>

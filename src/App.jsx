@@ -3748,6 +3748,18 @@ function ManagementReport({ reports, runningHours, user }) {
         <div>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
             <div style={{ fontSize:12, fontWeight:700, color:C.accent }}>Detail Downtime</div>
+            {matchedEntries.length > 0 && (
+              <button
+                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
+                onClick={() => {
+                  const parts = ["downtime"];
+                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
+                  if (fYear) parts.push(fYear);
+                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
+                  downloadDowntimeCSV(matchedEntries, parts.join("_") + ".csv");
+                }}
+              >⬇️ Download CSV</button>
+            )}
           </div>
           <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto" }}>
             <table className="voyage-main-table" style={{ ...ss.tbl, minWidth:640 }}>

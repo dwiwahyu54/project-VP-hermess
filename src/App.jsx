@@ -2067,6 +2067,11 @@ function VesselReport({ reports, voys, user }) {
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
   const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
 
+  const daysInMonth = (() => {
+    if (fYear === "" || fMonth === "") return 0;
+    return new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();
+  })();
+
   const tableData = (() => {
     const base = SHIPS.map((ship, idx) => ({ ship, no: idx + 1 }));
 
@@ -2079,78 +2084,40 @@ function VesselReport({ reports, voys, user }) {
       arr2.sort((a,b) => new Date(a.dep?.ts||0) - new Date(b.dep?.ts||0))
     );
 
+    const allDt = getAllDowntimeEntries(reports);
+    const allAnc = getAnchorageTimeEntries(reports);
+    const allBerth = getBerthingTimeEntries(reports);
+
+    function monthFilteredSegs(entries, ship) {
+      const out = [];
+      (entries || []).forEach(e => {
+        if (e.ship !== ship) return;
+        const segs = splitByMonth(e.t0, e.t1);
+        segs.forEach(seg => {
+          const yOk = !fYear || seg.year === Number(fYear);
+          const mOk = !fMonth || seg.month === Number(fMonth);
+          if (yOk && mOk) out.push(seg.hours);
+        });
+      });
+      return out;
+    }
+
     return base.map(row => {
       const { ship } = row;
       const shipVoys = (shipVoyMap[ship] || []);
-      const sailSegs = [], dtSegs = [], portSegs = [], ancSegs = [];
+      const sailSegs = [];
       let miles = 0;
-      let matched = false;
 
       shipVoys.forEach(v => {
-        // Sailing BOSV -> EOSV
         if (v.bosv && v.eosv) {
           const segs = splitByMonth(v.bosv, v.eosv);
           segs.forEach(seg => {
             const yOk = !fYear || seg.year === Number(fYear);
             const mOk = !fMonth || seg.month === Number(fMonth);
-            if (yOk && mOk) { sailSegs.push(seg.hours); matched = true; }
+            if (yOk && mOk) sailSegs.push(seg.hours);
           });
         }
 
-        // Downtime
-        (v.dts || []).forEach(dt => {
-          if (!dt.t0 || !dt.t1) return;
-          const segs = splitByMonth(dt.t0, dt.t1);
-          segs.forEach(seg => {
-            const yOk = !fYear || seg.year === Number(fYear);
-            const mOk = !fMonth || seg.month === Number(fMonth);
-            if (yOk && mOk) { dtSegs.push(seg.hours); matched = true; }
-          });
-        });
-
-        // Shelter downtime
-        const shelterArrs = (v.list||[]).filter(r=>r.type==="shelter_arr");
-        const shelterDeps = (v.list||[]).filter(r=>r.type==="shelter_dep");
-        shelterArrs.forEach(sa => {
-          const sd = shelterDeps[0];
-          const t0 = sa[evKey("SBE/EOSV")] || sa.ts;
-          const t1 = sd ? (sd[evKey("BOSV")] || sd.ts) : null;
-          if (!t0 || !t1) return;
-          const segs = splitByMonth(t0, t1);
-          segs.forEach(seg => {
-            const yOk = !fYear || seg.year === Number(fYear);
-            const mOk = !fMonth || seg.month === Number(fMonth);
-            if (yOk && mOk) { dtSegs.push(seg.hours); matched = true; }
-          });
-        });
-
-        // In Port EOSV -> next BOSV
-        if (v.inPortT0) {
-          const idx = shipVoys.indexOf(v);
-          const next = shipVoys[idx + 1];
-          const t1 = next?.bosv || null;
-          if (v.inPortT0 && t1) {
-            const segs = splitByMonth(v.inPortT0, t1);
-            segs.forEach(seg => {
-              const yOk = !fYear || seg.year === Number(fYear);
-              const mOk = !fMonth || seg.month === Number(fMonth);
-              if (yOk && mOk) { portSegs.push(seg.hours); matched = true; }
-            });
-          }
-        }
-
-        // Anchorage
-        (v.anchorIntervals || []).forEach(ai => {
-          if (!ai.t0 || !ai.t1) return;
-          const segs = splitByMonth(ai.t0, ai.t1);
-          segs.forEach(seg => {
-            const yOk = !fYear || seg.year === Number(fYear);
-            const mOk = !fMonth || seg.month === Number(fMonth);
-            if (yOk && mOk) { ancSegs.push(seg.hours); matched = true; }
-          });
-        });
-
-        // Miles
         const shipMiles = (v.list || [])
           .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ttl_dist)
           .reduce((s, r) => s + (parseFloat(r.ttl_dist) || 0), 0);
@@ -2164,7 +2131,7 @@ function VesselReport({ reports, voys, user }) {
               segs.forEach(seg => {
                 const yOk = !fYear || seg.year === Number(fYear);
                 const mOk = !fMonth || seg.month === Number(fMonth);
-                if (yOk && mOk) { miles += shipMiles * (seg.hours / totalH); }
+                if (yOk && mOk) miles += shipMiles * (seg.hours / totalH);
               });
             } else if (!fYear && !fMonth) {
               miles += shipMiles;
@@ -2176,18 +2143,18 @@ function VesselReport({ reports, voys, user }) {
       });
 
       const sailH = sailSegs.reduce((s,h)=>s+h,0);
-      const anchH = ancSegs.reduce((s,h)=>s+h,0);
-      const portH = portSegs.reduce((s,h)=>s+h,0);
-      const dtH   = dtSegs.reduce((s,h)=>s+h,0);
+      const dtH = monthFilteredSegs(allDt, ship).reduce((s,h)=>s+h,0);
+      const ancH = monthFilteredSegs(allAnc, ship).reduce((s,h)=>s+h,0);
+      const berthH = monthFilteredSegs(allBerth, ship).reduce((s,h)=>s+h,0);
 
       return {
         ...row,
         sailDays: sailH / 24,
-        anchDays: anchH / 24,
-        portDays: portH / 24,
         dtDays: dtH / 24,
+        anchDays: ancH / 24,
+        portDays: berthH / 24,
+        totalHari: daysInMonth > 0 ? daysInMonth : 0,
         miles: Math.round(miles),
-        // Placeholder columns — formula akan dihubungkan belakangan
         meJun: 0, meMay: 0,
         aeSeaJun: 0, aeSeaMay: 0,
         aePortJun: 0, aePortMay: 0,
@@ -2196,17 +2163,17 @@ function VesselReport({ reports, voys, user }) {
         aveSpdMay: 0, aveSpdJun: 0,
       };
     });
-  })({ fYear, fMonth, voys, reports });
+  })({ fYear, fMonth, reports, voys });
 
   const visible = tableData;
 
   const totals = visible.reduce((acc, r) => ({
     sailDays: acc.sailDays + r.sailDays,
+    dtDays:   acc.dtDays + r.dtDays,
     anchDays: acc.anchDays + r.anchDays,
     portDays: acc.portDays + r.portDays,
-    dtDays:   acc.dtDays + r.dtDays,
     miles: acc.miles + r.miles,
-  }), { sailDays:0, anchDays:0, portDays:0, dtDays:0, miles:0 });
+  }), { sailDays:0, dtDays:0, anchDays:0, portDays:0, miles:0 });
 
   const resetFilters = () => { setFYear(""); setFMonth(""); };
   const activeCount = [fYear, fMonth].filter(x=>x!=="").length;
@@ -2261,7 +2228,7 @@ function VesselReport({ reports, voys, user }) {
                 <td style={{ ...ss.td(i%2) }}>{r.anchDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.portDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.dtDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(i%2), fontWeight:700 }}>{ (r.sailDays + r.anchDays + r.portDays + r.dtDays).toFixed(2) }</td>
+                <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.totalHari > 0 ? r.totalHari.toFixed(0) : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.miles.toLocaleString()}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.meMay != null ? r.meMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.aeSeaMay != null ? r.aeSeaMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
@@ -2284,7 +2251,7 @@ function VesselReport({ reports, voys, user }) {
                 <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.anchDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.portDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.dtDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(true), fontWeight:700 }}>{ (totals.sailDays + totals.anchDays + totals.portDays + totals.dtDays).toFixed(2) }</td>
+                <td style={{ ...ss.td(true), fontWeight:700 }}>{daysInMonth > 0 ? daysInMonth.toFixed(0) : "—"}</td>
                 <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.miles.toLocaleString()}</td>
                 <td colSpan={12} style={{ ...ss.td(true), color:C.muted }}>—</td>
               </tr>
@@ -2294,7 +2261,7 @@ function VesselReport({ reports, voys, user }) {
       </div>
 
       <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
-        * Kolom waktu operasi dihitung proporsional per bulan jika voyage melintasi bulan berbeda. Kolom bertanda “—” belum terhubung ke sumber data.
+        * Sailing = BOSV→EOSV per bulan. Anchorage = arr_anchor SBE/EOSV → shift_berth FWE. At Port = shift_berth/arr_berth FWE → next BOSV. Downtime = laporan downtime + shelter. Total Hari = jumlah hari kalender bulan terpilih.
       </div>
     </div>
   );

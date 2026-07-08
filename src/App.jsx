@@ -2081,6 +2081,94 @@ function VesselReport({ reports, voys, user }) {
     return fYear;
   })();
 
+  function getAvgSpeedForShipMonth(ship, year, month) {
+    if (year === "" || month === "") return null;
+    const y = Number(year);
+    const m = Number(month);
+    const nextMonth = m + 1;
+    const nextYear = nextMonth > 11 ? y + 1 : y;
+    const nextMonthIdx = nextMonth > 11 ? 0 : nextMonth;
+    const nextMonthName = MONTHS[nextMonthIdx];
+
+    let sum = 0;
+    let count = 0;
+
+    const shipVoys = (voys||[]).filter(v => v.ship === ship);
+    const shipReports = reports.filter(r => r.ship === ship);
+
+    // 1. Arrival reports in this month
+    shipReports
+      .filter(r => ["arr_berth","arr_anchor"].includes(r.type))
+      .filter(r => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })
+      .forEach(r => {
+        const spd = parseFloat(r.avg_spd || r.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+      });
+
+    // 2. For each voyage sailing this month with no arrival
+    shipVoys.forEach(v => {
+      const hasArrivalInMonth = shipReports.some(r =>
+        ["arr_berth","arr_anchor"].includes(r.type) && r.voy === v.no &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })()
+      );
+      if (hasArrivalInMonth) return;
+
+      const hasNoonInMonth = shipReports.some(r =>
+        r.type === "noon" && r.voy === v.no &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })()
+      );
+      if (!hasNoonInMonth) return;
+
+      // Arrival on 1st next month before noon
+      const arrBeforeNoon = (() => {
+        const candidates = shipReports.filter(r =>
+          ["arr_berth","arr_anchor"].includes(r.type) && r.voy === v.no &&
+          (() => { const d = new Date(r.ts); return d.getFullYear()===nextYear && d.getMonth()===nextMonthIdx && d.getDate()===1; })()
+        );
+        const beforeNoon = candidates.filter(r => new Date(r.ts).getHours() < 12);
+        if (beforeNoon.length === 0) return null;
+        beforeNoon.sort((a,b) => new Date(a.ts) - new Date(b.ts));
+        return beforeNoon[0];
+      })();
+
+      if (arrBeforeNoon) {
+        const spd = parseFloat(arrBeforeNoon.avg_spd || arrBeforeNoon.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; return; }
+      }
+
+      // Fallback: Noon on 1st next month
+      const noonOn1st = shipReports.find(r =>
+        r.type === "noon" && r.voy === v.no &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===nextYear && d.getMonth()===nextMonthIdx && d.getDate()===1; })()
+      );
+      if (noonOn1st) {
+        const spd = parseFloat(noonOn1st.avg_spd || noonOn1st.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+      }
+    });
+
+    // 3. Noon on 1st next month for voyages that departed THIS month
+    const allNoonOn1st = shipReports.filter(r =>
+      r.type === "noon" &&
+      (() => { const d = new Date(r.ts); return d.getFullYear()===nextYear && d.getMonth()===nextMonthIdx && d.getDate()===1; })()
+    );
+    allNoonOn1st.forEach(noon => {
+      const voyDepartureInCur = shipReports.some(r =>
+        ["departure","dep_anchor","shift_anchor"].includes(r.type) && r.voy === noon.voy &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })()
+      );
+      const hasArrivalInCur = shipReports.some(r =>
+        ["arr_berth","arr_anchor"].includes(r.type) && r.voy === noon.voy &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })()
+      );
+      if (!voyDepartureInCur || hasArrivalInCur) return;
+      const spd = parseFloat(noon.avg_spd || noon.spd);
+      if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+    });
+
+    return count > 0 ? (sum / count) : null;
+  }
+
   const tableData = (() => {
     const base = SHIPS.map((ship, idx) => ({ ship, no: idx + 1 }));
 
@@ -2170,7 +2258,8 @@ function VesselReport({ reports, voys, user }) {
         aePortJun: 0, aePortMay: 0,
         avgMiles: 0, avgHari: 0,
         targetMeDay: 0, realisasi: "0.0%",
-        aveSpdPrev: 0, aveSpdCur: 0,
+        aveSpdPrev: prevMonthIdx !== null && !isNaN(Number(fYear)) ? Number(getAvgSpeedForShipMonth(ship, fMonth==="0" ? String(Number(fYear)-1) : fYear, prevMonthIdx)) : null,
+        aveSpdCur: fMonth !== "" && fYear !== "" ? Number(getAvgSpeedForShipMonth(ship, fYear, Number(fMonth))) : null,
       };
     });
   })({ fYear, fMonth, reports, voys });

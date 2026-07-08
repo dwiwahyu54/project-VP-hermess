@@ -1955,7 +1955,7 @@ function getShipCurrentStatus(ship, voys) {
 }
 
 // --- DASHBOARD ----------------------------------------------------------------
-function Dashboard({ reports, onNew, user }) {
+function Dashboard({ reports, onNew, user, runningHours, consMe }) {
   const voys = computeVoyages(reports);
 
   // Get status for each ship
@@ -2383,11 +2383,11 @@ function VesselReport({ reports, voys, user, runningHours, consMe }) {
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.totalHari > 0 ? r.totalHari.toFixed(0) : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.miles.toLocaleString()}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.mePrev != null ? r.mePrev.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2), color:C.muted }}>—</td>
-                <td style={{ ...ss.td(i%2), color:C.muted }}>—</td>
+                <td style={{ ...ss.td(i%2) }}></td>
+                <td style={{ ...ss.td(i%2) }}></td>
                 <td style={{ ...ss.td(i%2) }}>{r.meCur != null ? r.meCur.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2), color:C.muted }}>—</td>
-                <td style={{ ...ss.td(i%2), color:C.muted }}>—</td>
+                <td style={{ ...ss.td(i%2) }}></td>
+                <td style={{ ...ss.td(i%2) }}></td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgMiles || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgHari || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.targetMeDay || <span style={{color:C.muted}}>—</span>}</td>
@@ -4094,7 +4094,7 @@ export default function App() {
           </nav>
         )}
         <main style={{ ...ss.main, paddingBottom: isMobile ? 80 : 22 }}>
-          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user}/>}
+          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user} runningHours={runningHours} consMe={consMe}/>}
           {page==="new"       && <ReportForm onSave={addReport} onCancel={() => setPage("dashboard")} allReports={visibleReports} user={user}/>}
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
           {page==="log"       && <ReportLog reports={visibleReports} onView={setViewing} user={user}/>}

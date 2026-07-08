@@ -3283,6 +3283,34 @@ function ManagementReport({ reports, runningHours, user }) {
   const activeCount = [fShip, fYear, fMonth].filter(Boolean).length;
   const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
 
+  const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
+
+  const handleExport = () => {
+    const rows = matchedEntries.map((e, i) => {
+      const d0 = new Date(e.t0);
+      return [
+        e.ship,
+        MONTHS[d0.getMonth()],
+        d0.getFullYear(),
+        fmtDateForCSV(e.t0),
+        fmtDateForCSV(e.t1),
+        (e.durationH/24).toFixed(2),
+        e.reason,
+        e.category,
+      ];
+    });
+    const parts = ["downtime"];
+    if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
+    if (fYear) parts.push(fYear);
+    if (fMonth) parts.push(MONTHS[Number(fMonth)]);
+    downloadCSV(
+      ["Vessel","Bulan","Tahun","Start Downtime","Finish Downtime","Duration (days)","Reason","Category"],
+      matchedEntries,
+      (e, i) => [e.ship, MONTHS[new Date(e.t0).getMonth()], new Date(e.t0).getFullYear(), fmtDateForCSV(e.t0), fmtDateForCSV(e.t1), (e.durationH/24).toFixed(2), e.reason, e.category],
+      parts.join("_") + ".csv"
+    );
+  };
+
   const daysInMonth = (() => {
     if (fYear === "" || fMonth === "") return 0;
     return new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();

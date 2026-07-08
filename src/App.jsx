@@ -2171,138 +2171,157 @@ function VesselReport({ reports, voys, user, runningHours, consMe }) {
   }
 
   const tableData = (() => {
-    const base = SHIPS.map((ship, idx) => ({ ship, no: idx + 1 }));
+    try {
+      const base = SHIPS.map((ship, idx) => ({ ship, no: idx + 1 }));
 
-    const shipVoyMap = {};
-    voys.forEach(v => {
-      if (!shipVoyMap[v.ship]) shipVoyMap[v.ship] = [];
-      shipVoyMap[v.ship].push(v);
-    });
-    Object.values(shipVoyMap).forEach(arr2 =>
-      arr2.sort((a,b) => new Date(a.dep?.ts||0) - new Date(b.dep?.ts||0))
-    );
-
-    const allDt = getAllDowntimeEntries(reports);
-    const allAnc = getAnchorageTimeEntries(reports);
-    const allBerth = getBerthingTimeEntries(reports);
-
-    function monthFilteredSegs(entries, ship) {
-      const out = [];
-      (entries || []).forEach(e => {
-        if (e.ship !== ship) return;
-        const segs = splitByMonth(e.t0, e.t1);
-        segs.forEach(seg => {
-          const yOk = !fYear || seg.year === Number(fYear);
-          const mOk = !fMonth || seg.month === Number(fMonth);
-          if (yOk && mOk) out.push(seg.hours);
-        });
+      const shipVoyMap = {};
+      voys.forEach(v => {
+        if (!shipVoyMap[v.ship]) shipVoyMap[v.ship] = [];
+        shipVoyMap[v.ship].push(v);
       });
-      return out;
-    }
+      Object.values(shipVoyMap).forEach(arr2 =>
+        arr2.sort((a,b) => new Date(a.dep?.ts||0) - new Date(b.dep?.ts||0))
+      );
 
-    function getRunningHoursMe(ship, year, month) {
-      const val = runningHours?.[`${ship}|${year}|${month}`]?.me;
-      return parseFloat(val || 0);
-    }
-    function getRunningHoursAe(ship, year, month) {
-      const val = runningHours?.[`${ship}|${year}|${month}`]?.ae;
-      return parseFloat(val || 0);
-    }
-    function getConsMe(ship, year, month) {
-      const val = consMe?.[`${ship}|${year}|${month}`]?.cons_me;
-      return parseFloat(val || 0);
-    }
+      const allDt = getAllDowntimeEntries(reports || []);
+      const allAnc = getAnchorageTimeEntries(reports || []);
+      const allBerth = getBerthingTimeEntries(reports || []);
 
-    return base.map(row => {
-      const { ship } = row;
-      const shipVoys = (shipVoyMap[ship] || []);
-      const sailSegs = [];
-      let miles = 0;
+      function monthFilteredSegs(entries, ship) {
+        const out = [];
+        (entries || []).forEach(e => {
+          if (e && e.ship !== ship) return;
+          try {
+            const segs = splitByMonth(e && e.t0, e && e.t1);
+            segs.forEach(seg => {
+              const yOk = !fYear || seg.year === Number(fYear);
+              const mOk = !fMonth || seg.month === Number(fMonth);
+              if (yOk && mOk) out.push(seg.hours);
+            });
+          } catch {}
+        });
+        return out;
+      }
 
-      shipVoys.forEach(v => {
-        if (v.bosv && v.eosv) {
-          const segs = splitByMonth(v.bosv, v.eosv);
-          segs.forEach(seg => {
-            const yOk = !fYear || seg.year === Number(fYear);
-            const mOk = !fMonth || seg.month === Number(fMonth);
-            if (yOk && mOk) sailSegs.push(seg.hours);
-          });
-        }
+      function getRunningHoursMe(ship, year, month) {
+        const key = `${ship}|${year}|${month}`;
+        const val = runningHours && runningHours[key] && runningHours[key].me;
+        return parseFloat(val || 0);
+      }
+      function getRunningHoursAe(ship, year, month) {
+        const key = `${ship}|${year}|${month}`;
+        const val = runningHours && runningHours[key] && runningHours[key].ae;
+        return parseFloat(val || 0);
+      }
+      function getConsMe(ship, year, month) {
+        const key = `${ship}|${year}|${month}`;
+        const val = consMe && consMe[key] && consMe[key].cons_me;
+        return parseFloat(val || 0);
+      }
 
-        const shipMiles = (v.list || [])
-          .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ttl_dist)
-          .reduce((s, r) => s + (parseFloat(r.ttl_dist) || 0), 0);
-        if (shipMiles > 0) {
-          const eosv = v.eosv || (v.arr && (v.arr[evKey("SBE/EOSV")] || v.arr.ts)) || v.bosv || v.dep?.ts || v.list[0]?.ts;
-          const bosv = v.bosv || (v.dep && (v.dep[evKey("BOSV")] || v.dep.ts)) || v.list[0]?.ts;
-          if (bosv && eosv) {
-            const totalH = diffH(bosv, eosv);
-            if (totalH > 0) {
-              const segs = splitByMonth(bosv, eosv);
+      return base.map(row => {
+        const { ship } = row;
+        const shipVoys = (shipVoyMap[ship] || []);
+        const sailSegs = [];
+        let miles = 0;
+
+        shipVoys.forEach(v => {
+          try {
+            if (v && v.bosv && v.eosv) {
+              const segs = splitByMonth(v.bosv, v.eosv);
               segs.forEach(seg => {
                 const yOk = !fYear || seg.year === Number(fYear);
                 const mOk = !fMonth || seg.month === Number(fMonth);
-                if (yOk && mOk) miles += shipMiles * (seg.hours / totalH);
+                if (yOk && mOk) sailSegs.push(seg.hours);
               });
-            } else if (!fYear && !fMonth) {
-              miles += shipMiles;
             }
-          } else if (!fYear && !fMonth) {
-            miles += shipMiles;
-          }
-        }
+
+            const shipMiles = (v && v.list || [])
+              .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ttl_dist)
+              .reduce((s, r) => s + (parseFloat(r.ttl_dist) || 0), 0);
+            if (shipMiles > 0) {
+              const eosv = v && (v.eosv || (v.arr && (v.arr[evKey("SBE/EOSV")] || v.arr.ts)) || v.bosv || v.dep?.ts || (v.list && v.list[0]?.ts));
+              const bosv = v && (v.bosv || (v.dep && (v.dep[evKey("BOSV")] || v.dep.ts)) || (v.list && v.list[0]?.ts));
+              if (bosv && eosv) {
+                const totalH = diffH(bosv, eosv);
+                if (totalH > 0) {
+                  const segs = splitByMonth(bosv, eosv);
+                  segs.forEach(seg => {
+                    const yOk = !fYear || seg.year === Number(fYear);
+                    const mOk = !fMonth || seg.month === Number(fMonth);
+                    if (yOk && mOk) miles += shipMiles * (seg.hours / totalH);
+                  });
+                } else if (!fYear && !fMonth) {
+                  miles += shipMiles;
+                }
+              } else if (!fYear && !fMonth) {
+                miles += shipMiles;
+              }
+            }
+          } catch {}
+        });
+
+        const sailH = sailSegs.reduce((s,h)=>s+h,0);
+        const dtH = monthFilteredSegs(allDt, ship).reduce((s,h)=>s+h,0);
+        const ancH = monthFilteredSegs(allAnc, ship).reduce((s,h)=>s+h,0);
+        const berthH = monthFilteredSegs(allBerth, ship).reduce((s,h)=>s+h,0);
+        const sailingDays = daysInMonth > 0 ? Math.max(0, daysInMonth - dtH/24 - ancH/24 - berthH/24) : 0;
+
+        const mePrev = getConsMe(ship, prevColYear || fYear, prevMonthIdx);
+        const aeSeaPrev = getRunningHoursAe(ship, prevColYear || fYear, prevMonthIdx) / 24;
+        const aePortPrev = 0;
+        const meCur = getConsMe(ship, fYear, Number(fMonth));
+        const aeSeaCur = getRunningHoursAe(ship, fYear, Number(fMonth)) / 24;
+        const aePortCur = 0;
+
+        const avgMilesVal = (meCur > 0 && miles > 0) ? meCur / miles : 0;
+        const avgHariVal = (sailingDays > 0 && miles > 0) ? miles / sailingDays : null;
+        const targetMeDay = Number(meDayParam) * 24 || 0;
+        const realisasiVal = targetMeDay > 0 && !isNaN(meCur) ? (meCur / targetMeDay) : null;
+
+        return {
+          ...row,
+          sailDays: sailingDays,
+          dtDays: dtH / 24,
+          anchDays: ancH / 24,
+          portDays: berthH / 24,
+          totalHari: daysInMonth > 0 ? daysInMonth : 0,
+          miles: Math.round(miles),
+          mePrev,
+          aeSeaPrev,
+          aePortPrev,
+          meCur,
+          aeSeaCur,
+          aePortCur,
+          avgMiles: avgMilesVal,
+          avgHari: avgHariVal,
+          targetMeDay,
+          realisasi: realisasiVal != null ? (realisasiVal * 100).toFixed(1) + "%" : "0.0%",
+          aveSpdPrev: prevMonthIdx !== null && !isNaN(Number(fYear)) ? Number(getAvgSpeedForShipMonth(ship, fMonth==="0" ? String(Number(fYear)-1) : fYear, prevMonthIdx)) : null,
+          aveSpdCur: fMonth !== "" && fYear !== "" ? Number(getAvgSpeedForShipMonth(ship, fYear, Number(fMonth))) : null,
+          atPortDays: (() => {
+            try {
+              if (!runningHours || daysInMonth <= 0) return null;
+              const y = fYear;
+              const m = Number(fMonth);
+              if (!y && y !== 0) return null;
+              if (m === "" || isNaN(m)) return null;
+              const rhMeVal = parseFloat(runningHours[`${ship}|${y}|${m}`]?.me) || 0;
+              const val = berthH/24 - (rhMeVal/24) - (daysInMonth - dtH/24 - berthH/24 - anchH/24);
+              return Math.max(0, val);
+            } catch { return null; }
+          })(),
+        };
       });
-
-      const sailH = sailSegs.reduce((s,h)=>s+h,0);
-      const dtH = monthFilteredSegs(allDt, ship).reduce((s,h)=>s+h,0);
-      const ancH = monthFilteredSegs(allAnc, ship).reduce((s,h)=>s+h,0);
-      const berthH = monthFilteredSegs(allBerth, ship).reduce((s,h)=>s+h,0);
-      const sailingDays = daysInMonth > 0 ? Math.max(0, daysInMonth - dtH/24 - ancH/24 - berthH/24) : 0;
-
-      const mePrev = getConsMe(ship, prevColYear || fYear, prevMonthIdx);
-      const aeSeaPrev = getRunningHoursAe(ship, prevColYear || fYear, prevMonthIdx) / 24;
-      const aePortPrev = 0;
-      const meCur = getConsMe(ship, fYear, Number(fMonth));
-      const aeSeaCur = getRunningHoursAe(ship, fYear, Number(fMonth)) / 24;
-      const aePortCur = 0;
-
-      const avgMilesVal = (meCur > 0 && miles > 0) ? meCur / miles : 0;
-      const avgHariVal = (sailingDays > 0 && miles > 0) ? miles / sailingDays : null;
-      const targetMeDay = Number(meDayParam) * 24 || 0;
-      const realisasiVal = targetMeDay > 0 && !isNaN(meCur) ? (meCur / targetMeDay) : null;
-
-      return {
-        ...row,
-        sailDays: sailingDays,
-        dtDays: dtH / 24,
-        anchDays: ancH / 24,
-        portDays: berthH / 24,
-        totalHari: daysInMonth > 0 ? daysInMonth : 0,
-        miles: Math.round(miles),
-        mePrev,
-        aeSeaPrev,
-        aePortPrev,
-        meCur,
-        aeSeaCur,
-        aePortCur,
-        avgMiles: avgMilesVal,
-        avgHari: avgHariVal,
-        targetMeDay,
-        realisasi: realisasiVal != null ? (realisasiVal * 100).toFixed(1) + "%" : "0.0%",
-        aveSpdPrev: prevMonthIdx !== null && !isNaN(Number(fYear)) ? Number(getAvgSpeedForShipMonth(ship, fMonth==="0" ? String(Number(fYear)-1) : fYear, prevMonthIdx)) : null,
-        aveSpdCur: fMonth !== "" && fYear !== "" ? Number(getAvgSpeedForShipMonth(ship, fYear, Number(fMonth))) : null,
-        atPortDays: (() => {
-          if (!runningHours || daysInMonth <= 0) return null;
-          const y = fYear;
-          const m = Number(fMonth);
-          if (!y && y !== 0) return null;
-          if (m === "" || isNaN(m)) return null;
-          const rhMeVal = parseFloat(runningHours[`${ship}|${y}|${m}`]?.me) || 0;
-          const val = berthH/24 - (rhMeVal/24) - (daysInMonth - dtH/24 - berthH/24 - anchH/24);
-          return Math.max(0, val);
-        })(),
-      };
-    });
+    } catch (e) {
+      // Safety fallback: render empty rows if any month-filtered calc explodes
+      return SHIPS.map((ship, idx) => ({
+        ship, no: idx + 1, sailDays: 0, dtDays: 0, anchDays: 0, portDays: 0,
+        totalHari: 0, miles: 0, mePrev: null, aeSeaPrev: null, aePortPrev: null,
+        meCur: null, aeSeaCur: null, aePortCur: null, avgMiles: 0, avgHari: null,
+        targetMeDay: 0, realisasi: "0.0%", aveSpdPrev: null, aveSpdCur: null, atPortDays: null,
+      }));
+    }
   })({ fYear, fMonth, reports, voys });
 
   const visible = tableData;

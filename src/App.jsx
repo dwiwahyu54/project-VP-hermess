@@ -2355,6 +2355,96 @@ function VesselReport({ reports, voys, user, runningHours, consMe }) {
         {activeCount > 0 && (
           <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>
         )}
+        <button
+          style={{ ...ss.btn, fontSize:11, padding:"5px 12px", marginLeft:"auto" }}
+          onClick={() => {
+            const parts = ["vessel-report"];
+            if (fYear) parts.push(fYear);
+            if (fMonth !== "") parts.push(MONTHS[Number(fMonth)]);
+            downloadVesselReportCSV(visible, parts.join("_") + ".csv");
+          }}
+        >⬇️ Download Vessel Report</button>
+      </div>
+
+      <div style={{ display:"flex", gap:10, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
+        <div style={{ fontSize:12, fontWeight:700, color:C.accent }}>Download All Report</div>
+        <button
+          style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
+          onClick={() => {
+            const y = fYear || "";
+            const m = fMonth !== "" ? MONTHS[Number(fMonth)] : "";
+            const prefix = ["report", y, m].filter(Boolean).join("_");
+
+            const DELIM = ";";
+            const sep = "sep=;\n";
+            const BOM = "\uFEFF";
+
+            const vesselRows = visible.map(r => [
+              r.no,
+              r.ship,
+              r.sailDays.toFixed(2),
+              r.anchDays.toFixed(2),
+              r.atPortDays != null ? r.atPortDays.toFixed(2) : "",
+              r.dtDays.toFixed(2),
+              r.totalHari > 0 ? r.totalHari.toFixed(0) : "",
+              r.miles,
+              r.mePrev != null ? r.mePrev : "",
+              "",
+              "",
+              r.meCur != null ? r.meCur : "",
+              "",
+              "",
+              r.avgMiles || "",
+              r.avgHari || "",
+              r.targetMeDay || "",
+              typeof r.realisasi === 'string' ? parseFloat(r.realisasi)/100 : "",
+              r.aveSpdPrev != null ? r.aveSpdPrev : "",
+              r.aveSpdCur != null ? r.aveSpdCur : "",
+            ]);
+
+            const vesselHeader = [
+              "No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
+              "ME.pelaporanSebelum","AE at Sea.pelaporanSebelum","AE at Port.pelaporanSebelum",
+              "ME.pelaporanSekarang","AE at Sea.pelaporanSekarang","AE at Port.pelaporanSekarang",
+              "Avg/Miles","Avg/Hari","Target ME/Day","Realisasi Pemakaian",
+              "AVE Speed.pelaporanSebelum","AVE Speed.pelaporanSekarang"
+            ];
+
+            const parts = [
+              "# VESSEL REPORT",
+              vesselHeader.join(DELIM),
+              ...vesselRows.map(v => v.join(DELIM)),
+              "",
+              "# ANCHORAGE TIME",
+              "Nama Kapal;Bulan;Tahun;Anchorage (EOSV Arrival);Berthing (FWE Shifting to berth);Anchorage Time (hari)",
+              ...anchorageDetailRows.map(row => {
+                const d = new Date(row.t0);
+                return [row.ship, MONTHS[d.getMonth()], d.getFullYear(), fmtDateForCSV(row.t0), fmtDateForCSV(row.t1), (row.hours/24).toFixed(2)].join(DELIM);
+              }),
+              "",
+              "# BERTHING TIME",
+              "Nama Kapal;Bulan;Tahun;Berthing (FWE shift to berth/arr berth);Departure (BOSV departure next voyage);Berthing Time (hari)",
+              ...berthingDetailRows.map(row => {
+                const d = new Date(row.t0);
+                return [row.ship, MONTHS[d.getMonth()], d.getFullYear(), fmtDateForCSV(row.t0), fmtDateForCSV(row.t1), (row.hours/24).toFixed(2)].join(DELIM);
+              }),
+              "",
+              "# DOWNTIME REPORT",
+              "Vessel;Start Downtime;Finish Downtime;Duration (days);Reason;Category",
+              ...matchedEntries.map(e => [e.ship, fmtDateForCSV(e.t0), fmtDateForCSV(e.t1), (e.durationH/24).toFixed(2), e.reason, e.category].join(DELIM)),
+            ];
+
+            const blob = new Blob([BOM + sep + parts.join("\n")], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = prefix ? `${prefix}.csv` : "all_report.csv";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }}
+        >⬇️ Download All Report</button>
       </div>
 
       {/* Year/Month header like Excel */}
@@ -2674,8 +2764,6 @@ function downloadCSV(headers, rows, rowMapper, filename) {
 }
 
 function downloadCSVRaw(csvContent, filename) {
-  // "sep=;" tells Excel Desktop to use semicolon as the delimiter.
-  // BOM (\uFEFF) ensures UTF-8 encoding is detected correctly on Windows.
   const BOM = "\uFEFF";
   const SEP = "sep=;\n";
   const blob = new Blob([BOM + SEP + csvContent], { type: "text/csv;charset=utf-8;" });
@@ -2687,6 +2775,44 @@ function downloadCSVRaw(csvContent, filename) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function downloadVesselReportCSV(rows, filename) {
+  const DELIM = ";";
+  const header = [
+    "No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
+    "ME.pelaporanSebelum","AE at Sea.pelaporanSebelum","AE at Port.pelaporanSebelum",
+    "ME.pelaporanSekarang","AE at Sea.pelaporanSekarang","AE at Port.pelaporanSekarang",
+    "Avg/Miles","Avg/Hari","Target ME/Day","Realisasi Pemakaian",
+    "AVE Speed.pelaporanSebelum","AVE Speed.pelaporanSekarang"
+  ];
+  const csvRows = [header.join(DELIM)];
+  rows.forEach(r => {
+    const vals = [
+      r.no,
+      r.ship,
+      r.sailDays.toFixed(2),
+      r.anchDays.toFixed(2),
+      r.atPortDays != null ? r.atPortDays.toFixed(2) : "",
+      r.dtDays.toFixed(2),
+      r.totalHari > 0 ? r.totalHari.toFixed(0) : "",
+      r.miles,
+      r.mePrev != null ? r.mePrev : "",
+      "",
+      "",
+      r.meCur != null ? r.meCur : "",
+      "",
+      "",
+      r.avgMiles || "",
+      r.avgHari || "",
+      r.targetMeDay || "",
+      typeof r.realisasi === 'string' ? parseFloat(r.realisasi)/100 : "",
+      r.aveSpdPrev != null ? r.aveSpdPrev : "",
+      r.aveSpdCur != null ? r.aveSpdCur : "",
+    ];
+    csvRows.push(vals.join(DELIM));
+  });
+  downloadCSVRaw(csvRows.join("\n"), filename);
 }
 
 function RunningHoursInput({ rhKey, current, onSave }) {
@@ -4012,6 +4138,7 @@ function ManagementReport({ reports, runningHours, user }) {
 
 // --- APP ----------------------------------------------------------------------
 export default function App() {
+  // force-rebuild: ManagementReport filter/export fixes must take effect in Vercel
   const isMobile = useIsMobile();
   // GlobalStyles renders unconditionally so CSS variables are defined
   // even on the Login screen (which returns early, before the main app shell).

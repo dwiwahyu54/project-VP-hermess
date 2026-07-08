@@ -3286,6 +3286,8 @@ function ManagementReport({ reports, runningHours, user }) {
   const [showAvgSpeedDetail, setShowAvgSpeedDetail] = useState(false);
 
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const shipFilter = fShip;
+  const activeCount = [fShip, fYear, fMonth].filter(Boolean).length;
   const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
 
   const daysInMonth = (() => {

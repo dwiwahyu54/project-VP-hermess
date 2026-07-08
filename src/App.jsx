@@ -2054,14 +2054,13 @@ function Dashboard({ reports, onNew, user }) {
      </table>
       </div>
 
-      <VesselActivityReport reports={reports} voys={voys} user={user}/>
+      <VesselReport reports={reports} voys={voys} user={user}/>
     </div>
   );
 }
 
-// === EXCEL-STYLE VESSEL ACTIVITY REPORT ========================================
-function VesselActivityReport({ reports, voys, user }) {
-  const [fShip, setFShip] = useState("");
+// === EXCEL-STYLE VESSEL REPORT ================================================
+function VesselReport({ reports, voys, user }) {
   const [fYear, setFYear] = useState("");
   const [fMonth, setFMonth] = useState("");
 
@@ -2156,7 +2155,6 @@ function VesselActivityReport({ reports, voys, user }) {
           .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ttl_dist)
           .reduce((s, r) => s + (parseFloat(r.ttl_dist) || 0), 0);
         if (shipMiles > 0) {
-          // allocate miles proportionally by month using EOSV segments
           const eosv = v.eosv || (v.arr && (v.arr[evKey("SBE/EOSV")] || v.arr.ts)) || v.bosv || v.dep?.ts || v.list[0]?.ts;
           const bosv = v.bosv || (v.dep && (v.dep[evKey("BOSV")] || v.dep.ts)) || v.list[0]?.ts;
           if (bosv && eosv) {
@@ -2177,7 +2175,6 @@ function VesselActivityReport({ reports, voys, user }) {
         }
       });
 
-      // If no filter and no data at all, still show row with zeros
       const sailH = sailSegs.reduce((s,h)=>s+h,0);
       const anchH = ancSegs.reduce((s,h)=>s+h,0);
       const portH = portSegs.reduce((s,h)=>s+h,0);
@@ -2199,9 +2196,9 @@ function VesselActivityReport({ reports, voys, user }) {
         aveSpdMay: 0, aveSpdJun: 0,
       };
     });
-  })({ fShip, fYear, fMonth, voys, reports });
+  })({ fYear, fMonth, voys, reports });
 
-  const visible = tableData.filter(r => !fShip || r.ship === fShip);
+  const visible = tableData;
 
   const totals = visible.reduce((acc, r) => ({
     sailDays: acc.sailDays + r.sailDays,
@@ -2211,22 +2208,16 @@ function VesselActivityReport({ reports, voys, user }) {
     miles: acc.miles + r.miles,
   }), { sailDays:0, anchDays:0, portDays:0, dtDays:0, miles:0 });
 
-  const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
-  const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
+  const resetFilters = () => { setFYear(""); setFMonth(""); };
+  const activeCount = [fYear, fMonth].filter(x=>x!=="").length;
   const headerYear = fYear || (new Date().getFullYear());
   const headerMonth = fMonth !== "" ? MONTHS[Number(fMonth)] : "";
 
   return (
     <div>
-      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Activity Report</div>
+      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Report</div>
 
       <div style={{ display:"flex", gap:10, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
-        {!user?.ship && (
-          <select style={{ ...ss.sel, width:"auto", minWidth:160 }} value={fShip} onChange={e=>setFShip(e.target.value)}>
-            <option value="">Semua Kapal</option>
-            {SHIPS.map(s=><option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
         <select style={{ ...ss.sel, width:"auto", minWidth:120 }} value={fYear} onChange={e=>setFYear(e.target.value)}>
           <option value="">Semua Tahun</option>
           {years.map(y=><option key={y} value={y}>{y}</option>)}
@@ -2251,10 +2242,10 @@ function VesselActivityReport({ reports, voys, user }) {
         <table style={{ ...ss.tbl, minWidth:1100 }}>
           <thead>
             <tr>
-              {["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Miles",
+              {["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
                 "ME (Jun)","ME (May)","AE at Sea (Jun)","AE at Sea (May)","AE at Port (Jun)","AE at Port (May)",
                 "Avg/Miles","Avg/Hari","Target ME /Day","Realisasi Pemakaian","AVE Speed May","AVE Speed Jun"].map(h =>
-                <th key={h} style={{ ...ss.th, whiteSpace:"nowrap", minWidth: h==="Nama Kapal"?160:90 }}>{h}</th>
+                <th key={h} style={{ ...ss.th, whiteSpace:"nowrap", minWidth: h==="Nama Kapal"?150:85 }}>{h}</th>
               )}
             </tr>
           </thead>
@@ -2270,13 +2261,14 @@ function VesselActivityReport({ reports, voys, user }) {
                 <td style={{ ...ss.td(i%2) }}>{r.anchDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.portDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.dtDays.toFixed(2)}</td>
+                <td style={{ ...ss.td(i%2), fontWeight:700 }}>{ (r.sailDays + r.anchDays + r.portDays + r.dtDays).toFixed(2) }</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.miles.toLocaleString()}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.meJun || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.meMay || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aeSeaJun || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aeSeaMay || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aePortJun || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aePortMay || <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.meJun != null ? r.meJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.meMay != null ? r.meMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aeSeaJun != null ? r.aeSeaJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aeSeaMay != null ? r.aeSeaMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aePortJun != null ? r.aePortJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aePortMay != null ? r.aePortMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgMiles || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgHari || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.targetMeDay || <span style={{color:C.muted}}>—</span>}</td>
@@ -2292,6 +2284,7 @@ function VesselActivityReport({ reports, voys, user }) {
                 <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.anchDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.portDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.dtDays.toFixed(2)}</td>
+                <td style={{ ...ss.td(true), fontWeight:700 }}>{ (totals.sailDays + totals.anchDays + totals.portDays + totals.dtDays).toFixed(2) }</td>
                 <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.miles.toLocaleString()}</td>
                 <td colSpan={12} style={{ ...ss.td(true), color:C.muted }}>—</td>
               </tr>

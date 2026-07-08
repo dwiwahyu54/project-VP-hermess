@@ -2072,6 +2072,15 @@ function VesselReport({ reports, voys, user }) {
     return new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();
   })();
 
+  const curLabel = fMonth !== "" ? MONTHS[Number(fMonth)] : "";
+  const prevMonthIdx = fMonth !== "" ? (Number(fMonth) - 1 + 12) % 12 : null;
+  const prevMonthLabel = prevMonthIdx !== null ? MONTHS[prevMonthIdx] : "";
+  const prevColYear = (() => {
+    if (fYear === "" || fMonth === "") return "";
+    if (Number(fMonth) === 0) return String(Number(fYear) - 1);
+    return fYear;
+  })();
+
   const tableData = (() => {
     const base = SHIPS.map((ship, idx) => ({ ship, no: idx + 1 }));
 
@@ -2146,10 +2155,11 @@ function VesselReport({ reports, voys, user }) {
       const dtH = monthFilteredSegs(allDt, ship).reduce((s,h)=>s+h,0);
       const ancH = monthFilteredSegs(allAnc, ship).reduce((s,h)=>s+h,0);
       const berthH = monthFilteredSegs(allBerth, ship).reduce((s,h)=>s+h,0);
+      const sailingDays = daysInMonth > 0 ? Math.max(0, daysInMonth - dtH/24 - ancH/24 - berthH/24) : 0;
 
       return {
         ...row,
-        sailDays: sailH / 24,
+        sailDays: sailingDays,
         dtDays: dtH / 24,
         anchDays: ancH / 24,
         portDays: berthH / 24,
@@ -2209,11 +2219,20 @@ function VesselReport({ reports, voys, user }) {
         <table style={{ ...ss.tbl, minWidth:1100 }}>
           <thead>
             <tr>
-              {["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
-                "ME (May)","AE at Sea (May)","AE at Port (May)","ME (Jun)","AE at Sea (Jun)","AE at Port (Jun)",
-                "Avg/Miles","Avg/Hari","Target ME /Day","Realisasi Pemakaian","AVE Speed May","AVE Speed Jun"].map(h =>
-                <th key={h} style={{ ...ss.th, whiteSpace:"nowrap", minWidth: h==="Nama Kapal"?150:85 }}>{h}</th>
-              )}
+              {(() => {
+                const la = fMonth !== "" ? `ME (${prevMonthLabel})` : "ME (1)";
+                const lb = fMonth !== "" ? `AE at Sea (${prevMonthLabel})` : "AE at Sea (1)";
+                const lc = fMonth !== "" ? `AE at Port (${prevMonthLabel})` : "AE at Port (1)";
+                const ld = fMonth !== "" ? `ME (${curLabel})` : "ME (2)";
+                const le = fMonth !== "" ? `AE at Sea (${curLabel})` : "AE at Sea (2)";
+                const lf = fMonth !== "" ? `AE at Port (${curLabel})` : "AE at Port (2)";
+                return ["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
+                  la, lb, lc, ld, le, lf,
+                  "Avg/Miles","Avg/Hari","Target ME /Day","Realisasi Pemakaian","AVE Speed May","AVE Speed Jun"
+                ].map(h =>
+                  <th key={h} style={{ ...ss.th, whiteSpace:"nowrap", minWidth: h==="Nama Kapal"?150:85 }}>{h}</th>
+                );
+              })()}
             </tr>
           </thead>
           <tbody>

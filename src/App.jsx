@@ -2054,15 +2054,16 @@ function Dashboard({ reports, onNew, user }) {
      </table>
       </div>
 
-      <VesselReport reports={reports} voys={voys} user={user} runningHours={runningHours}/>
+      <VesselReport reports={reports} voys={voys} user={user} runningHours={runningHours} consMe={consMe}/>
     </div>
   );
 }
 
 // === EXCEL-STYLE VESSEL REPORT ================================================
-function VesselReport({ reports, voys, user, runningHours }) {
+function VesselReport({ reports, voys, user, runningHours, consMe }) {
   const [fYear, setFYear] = useState("");
   const [fMonth, setFMonth] = useState("");
+  const [meDayParam, setMeDayParam] = useState(1.5);
 
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
   const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
@@ -2199,6 +2200,19 @@ function VesselReport({ reports, voys, user, runningHours }) {
       return out;
     }
 
+    function getRunningHoursMe(ship, year, month) {
+      const val = runningHours?.[`${ship}|${year}|${month}`]?.me;
+      return parseFloat(val || 0);
+    }
+    function getRunningHoursAe(ship, year, month) {
+      const val = runningHours?.[`${ship}|${year}|${month}`]?.ae;
+      return parseFloat(val || 0);
+    }
+    function getConsMe(ship, year, month) {
+      const val = consMe?.[`${ship}|${year}|${month}`]?.cons_me;
+      return parseFloat(val || 0);
+    }
+
     return base.map(row => {
       const { ship } = row;
       const shipVoys = (shipVoyMap[ship] || []);
@@ -2245,6 +2259,18 @@ function VesselReport({ reports, voys, user, runningHours }) {
       const berthH = monthFilteredSegs(allBerth, ship).reduce((s,h)=>s+h,0);
       const sailingDays = daysInMonth > 0 ? Math.max(0, daysInMonth - dtH/24 - ancH/24 - berthH/24) : 0;
 
+      const mePrev = getConsMe(ship, prevColYear || fYear, prevMonthIdx);
+      const aeSeaPrev = getRunningHoursAe(ship, prevColYear || fYear, prevMonthIdx) / 24;
+      const aePortPrev = 0;
+      const meCur = getConsMe(ship, fYear, Number(fMonth));
+      const aeSeaCur = getRunningHoursAe(ship, fYear, Number(fMonth)) / 24;
+      const aePortCur = 0;
+
+      const avgMilesVal = (meCur > 0 && miles > 0) ? meCur / miles : 0;
+      const avgHariVal = (sailingDays > 0 && miles > 0) ? miles / sailingDays : null;
+      const targetMeDay = Number(meDayParam) * 24 || 0;
+      const realisasiVal = targetMeDay > 0 && !isNaN(meCur) ? (meCur / targetMeDay) : null;
+
       return {
         ...row,
         sailDays: sailingDays,
@@ -2253,11 +2279,16 @@ function VesselReport({ reports, voys, user, runningHours }) {
         portDays: berthH / 24,
         totalHari: daysInMonth > 0 ? daysInMonth : 0,
         miles: Math.round(miles),
-        meJun: 0, meMay: 0,
-        aeSeaJun: 0, aeSeaMay: 0,
-        aePortJun: 0, aePortMay: 0,
-        avgMiles: 0, avgHari: 0,
-        targetMeDay: 0, realisasi: "0.0%",
+        mePrev,
+        aeSeaPrev,
+        aePortPrev,
+        meCur,
+        aeSeaCur,
+        aePortCur,
+        avgMiles: avgMilesVal,
+        avgHari: avgHariVal,
+        targetMeDay,
+        realisasi: realisasiVal != null ? (realisasiVal * 100).toFixed(1) + "%" : "0.0%",
         aveSpdPrev: prevMonthIdx !== null && !isNaN(Number(fYear)) ? Number(getAvgSpeedForShipMonth(ship, fMonth==="0" ? String(Number(fYear)-1) : fYear, prevMonthIdx)) : null,
         aveSpdCur: fMonth !== "" && fYear !== "" ? Number(getAvgSpeedForShipMonth(ship, fYear, Number(fMonth))) : null,
         atPortDays: (() => {
@@ -2351,12 +2382,12 @@ function VesselReport({ reports, voys, user, runningHours }) {
                 <td style={{ ...ss.td(i%2) }}>{r.dtDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.totalHari > 0 ? r.totalHari.toFixed(0) : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.miles.toLocaleString()}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.meMay != null ? r.meMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aeSeaMay != null ? r.aeSeaMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aePortMay != null ? r.aePortMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.meJun != null ? r.meJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aeSeaJun != null ? r.aeSeaJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aePortJun != null ? r.aePortJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.mePrev != null ? r.mePrev.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aeSeaPrev != null ? r.aeSeaPrev.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aePortPrev != null ? r.aePortPrev.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.meCur != null ? r.meCur.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aeSeaCur != null ? r.aeSeaCur.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aePortCur != null ? r.aePortCur.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgMiles || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgHari || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.targetMeDay || <span style={{color:C.muted}}>—</span>}</td>
@@ -2382,7 +2413,7 @@ function VesselReport({ reports, voys, user, runningHours }) {
       </div>
 
       <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
-        * Sailing = BOSV→EOSV per bulan. Anchorage = arr_anchor SBE/EOSV → shift_berth FWE. At Port = shift_berth/arr_berth FWE → next BOSV. Downtime = laporan downtime + shelter. Total Hari = jumlah hari kalender bulan terpilih.
+        * Sailing = BOSV→EOSV per bulan. Anchorage = arr_anchor SBE/EOSV → shift_berth FWE. At Port = shift_berth/arr_berth FWE → next BOSV. Downtime = laporan downtime + shelter. Total Hari = jumlah hari kalender bulan terpilih. Average Speed = konsisten Management Report. Avg/Miles = Cons ME cur / Miles. Target ME/Day = parameter ME/hari * 24.
       </div>
     </div>
   );
@@ -2676,7 +2707,7 @@ function RunningHoursInput({ rhKey, current, onSave }) {
 }
 
 // --- RH & CONSUMPTION PAGE -----------------------------------------------------
-function RHConsPage({ runningHours, setRunningHours, user }) {
+function RHConsPage({ runningHours, setRunningHours, consMe, setConsMe, user }) {
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
   const [rhShip, setRhShip] = useState(user?.ship || SHIPS[0]);
   const [rhYear, setRhYear] = useState(new Date().getFullYear());
@@ -2691,7 +2722,6 @@ function RHConsPage({ runningHours, setRunningHours, user }) {
   const [showRhForm, setShowRhForm] = useState(false);
 
   // Cons ME state
-  const [consMe, setConsMe] = useState({});
   const [consMeShip, setConsMeShip] = useState(user?.ship || SHIPS[0]);
   const [consMeYear, setConsMeYear] = useState(new Date().getFullYear());
   const [consMeMonth, setConsMeMonth] = useState(new Date().getMonth());
@@ -3915,6 +3945,7 @@ export default function App() {
   const [viewing,  setViewing]  = useState(null);
   const [editing,  setEditing]  = useState(null);
   const [runningHours, setRunningHours] = useState({}); // key: "ship|year|month" -> {me, ae}
+  const [consMe, setConsMe] = useState({}); // key: "ship|year|month" -> {cons_me}
   const [theme, setTheme] = useState("light");
 
   // Check Supabase session on mount
@@ -4067,7 +4098,7 @@ export default function App() {
           {page==="new"       && <ReportForm onSave={addReport} onCancel={() => setPage("dashboard")} allReports={visibleReports} user={user}/>}
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
           {page==="log"       && <ReportLog reports={visibleReports} onView={setViewing} user={user}/>}
-          {page==="rh"        && <RHConsPage runningHours={runningHours} setRunningHours={setRunningHours} user={user}/>}
+          {page==="rh"        && <RHConsPage runningHours={runningHours} setRunningHours={setRunningHours} consMe={consMe} setConsMe={setConsMe} user={user}/>}
           {page==="mgmt"      && <ManagementReport reports={visibleReports} runningHours={runningHours} user={user}/>}
         </main>
       </div>

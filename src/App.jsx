@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "./supabase";
-
+import "./styles.css";
+import * as XLSX from "xlsx";
 // --- CONSTANTS ----------------------------------------------------------------
 const SHIPS = ["Express Mas","Mavendra Mas","Prakarsa Mas","Pratama Mas","Semangat Mas","Segoro Mas","Sahabat Mas","Selaras Mas"];
 
@@ -2336,6 +2337,85 @@ function VesselReport({ reports, voys, user, runningHours, consMe }) {
 
   const resetFilters = () => { setFYear(""); setFMonth(""); };
   const activeCount = [fYear, fMonth].filter(x=>x!=="").length;
+
+  const buildAllRows = () => {
+    const vesselHeader = [
+      "No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
+      "ME.pelaporanSebelum","AE at Sea.pelaporanSebelum","AE at Port.pelaporanSebelum",
+      "ME.pelaporanSekarang","AE at Sea.pelaporanSekarang","AE at Port.pelaporanSekarang",
+      "Avg/Miles","Avg/Hari","Target ME/Day","Realisasi Pemakaian",
+      "AVE Speed.pelaporanSebelum","AVE Speed.pelaporanSekarang"
+    ];
+
+    const vesselRows = visible.map(r => [
+      r.no,
+      r.ship,
+      r.sailDays.toFixed(2),
+      r.anchDays.toFixed(2),
+      r.atPortDays != null ? r.atPortDays.toFixed(2) : "",
+      r.dtDays.toFixed(2),
+      r.totalHari > 0 ? r.totalHari.toFixed(0) : "",
+      r.miles,
+      r.mePrev != null ? r.mePrev : "",
+      "",
+      "",
+      r.meCur != null ? r.meCur : "",
+      "",
+      "",
+      r.avgMiles || "",
+      r.avgHari || "",
+      r.targetMeDay || "",
+      typeof r.realisasi === 'string' ? parseFloat(r.realisasi)/100 : "",
+      r.aveSpdPrev != null ? r.aveSpdPrev : "",
+      r.aveSpdCur != null ? r.aveSpdCur : "",
+    ]);
+
+    const anchorageRows = (anchorageDetailRows || []).map(row => {
+      const d = new Date(row.t0);
+      return {
+        ship: row.ship,
+        month: MONTHS[d.getMonth()],
+        year: d.getFullYear(),
+        t0: fmtDateForCSV(row.t0),
+        t1: fmtDateForCSV(row.t1),
+        hours: (row.hours/24).toFixed(2),
+      };
+    });
+
+    const berthingRows = (berthingDetailRows || []).map(row => {
+      const d = new Date(row.t0);
+      return {
+        ship: row.ship,
+        month: MONTHS[d.getMonth()],
+        year: d.getFullYear(),
+        t0: fmtDateForCSV(row.t0),
+        t1: fmtDateForCSV(row.t1),
+        hours: (row.hours/24).toFixed(2),
+      };
+    });
+
+    const downtimeRows = matchedEntries.map(e => [
+      e.ship,
+      fmtDateForCSV(e.t0),
+      fmtDateForCSV(e.t1),
+      (e.durationH/24).toFixed(2),
+      e.reason,
+      e.category,
+    ]);
+
+    return { vesselHeader, vesselRows, anchorageRows, berthingRows, downtimeRows };
+  };
+
+  const handleDownloadAllXLSX = () => {
+    const { vesselHeader, vesselRows, anchorageRows, berthingRows, downtimeRows } = buildAllRows();
+
+    const y = fYear || "";
+    const m = fMonth !== "" ? MONTHS[Number(fMonth)] : "";
+    const prefix = ["report", y, m].filter(Boolean).join("_");
+    const filename = `${prefix || "all_report"}.xlsx`;
+
+    downloadAllReportXLSX({ vesselHeader, vesselRows, anchorageRows, berthingRows, downtimeRows, filename });
+  };
   const headerYear = fYear || (new Date().getFullYear());
   const headerMonth = fMonth !== "" ? MONTHS[Number(fMonth)] : "";
 
@@ -2364,6 +2444,10 @@ function VesselReport({ reports, voys, user, runningHours, consMe }) {
             downloadVesselReportCSV(visible, parts.join("_") + ".csv");
           }}
         >⬇️ Download Vessel Report</button>
+        <button
+          style={{ ...ss.btn, fontSize:11, padding:"5px 12px", marginLeft:"auto" }}
+          onClick={handleDownloadAllXLSX}
+        >⬇️ Download All Report (.xlsx)</button>
       </div>
 
       {/* Year/Month header like Excel */}
@@ -2696,42 +2780,38 @@ function downloadCSVRaw(csvContent, filename) {
   URL.revokeObjectURL(url);
 }
 
-function downloadVesselReportCSV(rows, filename) {
-  const DELIM = ";";
-  const header = [
-    "No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
-    "ME.pelaporanSebelum","AE at Sea.pelaporanSebelum","AE at Port.pelaporanSebelum",
-    "ME.pelaporanSekarang","AE at Sea.pelaporanSekarang","AE at Port.pelaporanSekarang",
-    "Avg/Miles","Avg/Hari","Target ME/Day","Realisasi Pemakaian",
-    "AVE Speed.pelaporanSebelum","AVE Speed.pelaporanSekarang"
-  ];
-  const csvRows = [header.join(DELIM)];
-  rows.forEach(r => {
-    const vals = [
-      r.no,
-      r.ship,
-      r.sailDays.toFixed(2),
-      r.anchDays.toFixed(2),
-      r.atPortDays != null ? r.atPortDays.toFixed(2) : "",
-      r.dtDays.toFixed(2),
-      r.totalHari > 0 ? r.totalHari.toFixed(0) : "",
-      r.miles,
-      r.mePrev != null ? r.mePrev : "",
-      "",
-      "",
-      r.meCur != null ? r.meCur : "",
-      "",
-      "",
-      r.avgMiles || "",
-      r.avgHari || "",
-      r.targetMeDay || "",
-      typeof r.realisasi === 'string' ? parseFloat(r.realisasi)/100 : "",
-      r.aveSpdPrev != null ? r.aveSpdPrev : "",
-      r.aveSpdCur != null ? r.aveSpdCur : "",
-    ];
-    csvRows.push(vals.join(DELIM));
-  });
-  downloadCSVRaw(csvRows.join("\n"), filename);
+function downloadAllReportXLSX({ vesselRows, vesselHeader, anchorageRows, berthingRows, downtimeRows, filename = "all_report.xlsx" }) {
+  if (typeof XLSX === "undefined") {
+    alert("Library XLSX belum dimuat.");
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet([
+    vesselHeader,
+    ...(vesselRows || []),
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws1, "Vessel Report");
+
+  const ws2 = XLSX.utils.aoa_to_sheet([
+    "Nama Kapal;Bulan;Tahun;Anchorage (EOSV Arrival);Berthing (FWE Shifting to berth);Anchorage Time (hari)",
+    ...(anchorageRows || []).map(r => [r.ship, r.month, r.year, r.t0, r.t1, r.hours]),
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws2, "Anchorage Time");
+
+  const ws3 = XLSX.utils.aoa_to_sheet([
+    "Nama Kapal;Bulan;Tahun;Berthing (FWE shift to berth/arr berth);Departure (BOSV departure next voyage);Berthing Time (hari)",
+    ...(berthingRows || []).map(r => [r.ship, r.month, r.year, r.t0, r.t1, r.hours]),
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws3, "Berthing Time");
+
+  const ws4 = XLSX.utils.aoa_to_sheet([
+    ["Vessel", "Start Downtime", "Finish Downtime", "Duration (days)", "Reason", "Category"],
+    ...(downtimeRows || []).map(r => [r.ship, r.t0, r.t1, r.durationH, r.reason, r.category]),
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws4, "Downtime");
+
+  XLSX.writeFile(wb, filename);
 }
 
 function RunningHoursInput({ rhKey, current, onSave }) {

@@ -3308,6 +3308,22 @@ function ManagementReport({ reports, runningHours, user }) {
     return yOk && mOk && sOk;
   });
 
+  const anchorageDetailRows = (allAnc || []).filter(e => {
+    const d0 = new Date(e.t0);
+    const yOk = !fYear || d0.getFullYear() === Number(fYear);
+    const mOk = !fMonth || d0.getMonth() === Number(fMonth);
+    const sOk = !fShip || e.ship === fShip;
+    return yOk && mOk && sOk;
+  });
+
+  const berthingDetailRows = (allBerth || []).filter(e => {
+    const d0 = new Date(e.t0);
+    const yOk = !fYear || d0.getFullYear() === Number(fYear);
+    const mOk = !fMonth || d0.getMonth() === Number(fMonth);
+    const sOk = !fShip || e.ship === fShip;
+    return yOk && mOk && sOk;
+  });
+
   function monthFilteredVoySegs(entries, ship) {
     const out = [];
     (entries || []).forEach(e => {

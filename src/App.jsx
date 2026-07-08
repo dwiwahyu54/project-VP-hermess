@@ -2383,11 +2383,11 @@ function VesselReport({ reports, voys, user, runningHours, consMe }) {
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.totalHari > 0 ? r.totalHari.toFixed(0) : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.miles.toLocaleString()}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.mePrev != null ? r.mePrev.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2), color:C.muted }}></td>
-                <td style={{ ...ss.td(i%2), color:C.muted }}></td>
+                <td style={{ ...ss.td(i%2), color:C.muted }}>—</td>
+                <td style={{ ...ss.td(i%2), color:C.muted }}>—</td>
                 <td style={{ ...ss.td(i%2) }}>{r.meCur != null ? r.meCur.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2), color:C.muted }}></td>
-                <td style={{ ...ss.td(i%2), color:C.muted }}></td>
+                <td style={{ ...ss.td(i%2), color:C.muted }}>—</td>
+                <td style={{ ...ss.td(i%2), color:C.muted }}>—</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgMiles || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgHari || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.targetMeDay || <span style={{color:C.muted}}>—</span>}</td>

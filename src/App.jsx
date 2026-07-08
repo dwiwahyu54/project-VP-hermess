@@ -3298,6 +3298,14 @@ function ManagementReport({ reports, runningHours, user }) {
   const allAnc = getAnchorageTimeEntries(reports);
   const allBerth = getBerthingTimeEntries(reports);
 
+  const matchedEntries = (allDt || []).filter(e => {
+    const d0 = new Date(e.t0);
+    const yOk = !fYear || d0.getFullYear() === Number(fYear);
+    const mOk = !fMonth || d0.getMonth() === Number(fMonth);
+    const sOk = !fShip || e.ship === fShip;
+    return yOk && mOk && sOk;
+  });
+
   function monthFilteredVoySegs(entries, ship) {
     const out = [];
     (entries || []).forEach(e => {
@@ -3677,13 +3685,14 @@ function ManagementReport({ reports, runningHours, user }) {
   let atPortDays = null;
   if (fYear && fMonth !== "" && effectiveShip) {
     const daysInMonth = new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();
-    const berthingDays   = totalBerthingH / 24;
-    const anchorageDays  = totalAnchorageH / 24;
+    const berthingDays   = totalBerthH / 24;
+    const anchorageDays  = totalAnchH / 24;
     const downtimeDays   = totalDtH / 24;
     const rhKey = `${effectiveShip}|${fYear}|${fMonth}`;
-    const rhMe = parseFloat(runningHours[rhKey]?.me) || 0;
+    const rhMe = parseFloat(runningHours?.[rhKey]?.me) || 0;
 
     atPortDays = berthingDays - ((rhMe / 24) - (daysInMonth - downtimeDays - berthingDays - anchorageDays));
+    atPortDays = Number.isFinite(atPortDays) ? Math.max(0, atPortDays) : null;
   }
 
   return (

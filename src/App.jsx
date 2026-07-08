@@ -3755,9 +3755,6 @@ function ManagementReport({ reports, runningHours, user }) {
         <div>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
             <div style={{ fontSize:12, fontWeight:700, color:C.accent }}>Detail Downtime</div>
-            <button style={{ ...ss.btn, fontSize:11, padding:"6px 14px" }} onClick={handleExport}>
-              ⬇️ Download CSV
-            </button>
           </div>
           <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto" }}>
             <table className="voyage-main-table" style={{ ...ss.tbl, minWidth:640 }}>

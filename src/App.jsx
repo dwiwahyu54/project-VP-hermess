@@ -2243,7 +2243,7 @@ function VesselReport({ reports, voys, user }) {
           <thead>
             <tr>
               {["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
-                "ME (Jun)","ME (May)","AE at Sea (Jun)","AE at Sea (May)","AE at Port (Jun)","AE at Port (May)",
+                "ME (May)","AE at Sea (May)","AE at Port (May)","ME (Jun)","AE at Sea (Jun)","AE at Port (Jun)",
                 "Avg/Miles","Avg/Hari","Target ME /Day","Realisasi Pemakaian","AVE Speed May","AVE Speed Jun"].map(h =>
                 <th key={h} style={{ ...ss.th, whiteSpace:"nowrap", minWidth: h==="Nama Kapal"?150:85 }}>{h}</th>
               )}
@@ -2263,12 +2263,12 @@ function VesselReport({ reports, voys, user }) {
                 <td style={{ ...ss.td(i%2) }}>{r.dtDays.toFixed(2)}</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{ (r.sailDays + r.anchDays + r.portDays + r.dtDays).toFixed(2) }</td>
                 <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.miles.toLocaleString()}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.meJun != null ? r.meJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.meMay != null ? r.meMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aeSeaJun != null ? r.aeSeaJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.aeSeaMay != null ? r.aeSeaMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aePortJun != null ? r.aePortJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.aePortMay != null ? r.aePortMay.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.meJun != null ? r.meJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aeSeaJun != null ? r.aeSeaJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
+                <td style={{ ...ss.td(i%2) }}>{r.aePortJun != null ? r.aePortJun.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgMiles || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.avgHari || <span style={{color:C.muted}}>—</span>}</td>
                 <td style={{ ...ss.td(i%2) }}>{r.targetMeDay || <span style={{color:C.muted}}>—</span>}</td>

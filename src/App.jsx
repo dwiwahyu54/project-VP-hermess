@@ -2177,11 +2177,13 @@ function VoyageSummary({ reports, voys, user }) {
       totalAnchorH: ancBucket.reduce((s,h)=>s+h,0),
       matchedVoyageCount,
       sailConsMFO, sailConsMDO, portConsMFO, portConsMDO,
+      closingBalance: portBucket.reduce((s,h)=>s+h,0),
     };
   })({ fShip, fYear, fMonth, voys, reports });
 
   const { MONTHS, years, shipFiltered, totalSailH, totalDtH, totalInPortH, totalAnchorH,
-          matchedVoyageCount, sailConsMFO, sailConsMDO, portConsMFO, portConsMDO } = computed;
+          matchedVoyageCount, sailConsMFO, sailConsMDO, portConsMFO, portConsMDO,
+          closingBalance } = computed;
   const totalSailDays = totalSailH / 24;
 
   const curLabel = fMonth !== "" ? MONTHS[fMonth] : MONTHS[new Date().getMonth()];

@@ -2054,7 +2054,7 @@ function Dashboard({ reports, onNew, user }) {
      </table>
       </div>
 
-      <VoyageSummary reports={reports} voys={voys} user={user}/>
+      <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours}/>
     </div>
   );
 }
@@ -2248,23 +2248,13 @@ function VoyageSummary({ reports, voys, user }) {
   const AtPortDaysByShip = {};
   [...new Set(voys.map(v => v.ship))].forEach(ship => {
     const shipVoys = (voys || []).filter(v => v.ship === ship);
-    let berthH = 0;
-    shipVoys.forEach(v => {
-      (v.list || []).forEach(ev => {
-        if (!["arr_berth","shift_berth"].includes(ev.type)) return;
-        const fwe = ev[evKey("FWE")] || null;
-        if (!fwe) return;
-        const end = v.eosv || fwe;
-        if (end <= fwe) return;
-        const segs = splitByMonth(fwe, end);
-        segs.forEach(seg => {
-          const yearOk = !fYear || seg.year === Number(fYear);
-          const monthOk = !fMonth || seg.month === Number(fMonth);
-          if (yearOk && monthOk) berthH += seg.hours;
-        });
-      });
-    });
-    AtPortDaysByShip[ship] = (berthH / 24).toFixed(2);
+    const dtDays = DowntimeDaysByShip[ship] || 0;
+    const anchDays = AnchorageDaysByShip[ship] || 0;
+    const rhKey = `${ship}|${Number(fYear)}|${Number(fMonth)}`;
+    const rhMEh = (parseFloat(runningHours?.[rhKey]?.me) || 0) / 60;
+    const monthDays = daysInSelectedMonth;
+    let atPort = monthDays - dtDays - anchDays - (rhMEh / 24);
+    AtPortDaysByShip[ship] = atPort > 0 ? +atPort.toFixed(2) : 0;
   });
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
@@ -2342,17 +2332,18 @@ function VoyageSummary({ reports, voys, user }) {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
+              )}
+              </tbody>
+              <tfoot>
             <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
               <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
               <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(SailingDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(AnchorageDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(AtPortDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(DowntimeDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{daysInSelectedMonth}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>—</td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>

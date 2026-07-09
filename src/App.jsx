@@ -2207,54 +2207,36 @@ function VoyageSummary({ reports, voys, user }) {
         <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1600, fontSize:11 }}>
           <thead>
             <tr>
-              <th colSpan={23} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>2026</th>
+              <th colSpan={13} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>2026</th>
             </tr>
             <tr>
-              <th colSpan={23} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>June</th>
+              <th colSpan={13} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>June</th>
             </tr>
             <tr>
-              <th rowSpan={2} colSpan={2} style={{ ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nama Kapal</th>
-              <th colSpan={7} style={{ ...ss.th, fontSize:10, letterSpacing:"0.06em" }}>VESSEL ACTIVITY</th>
-              <th colSpan={6} style={{ ...ss.th, fontSize:10, letterSpacing:"0.06em" }}>Konsumsi BBM (Litre)</th>
-              <th colSpan={8} style={{ ...ss.th, fontSize:10, letterSpacing:"0.06em" }}>PERFORMANCE</th>
+              <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>No</th>
+              <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Nama Kapal</th>
+              <th colSpan={5} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
+              <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Konsumsi BBM (Litre)</th>
             </tr>
             <tr>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Sailing (Hari)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Anchorage (Hari)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>At Port (Hari)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Downtime (Hari)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Total (Hari)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Laut (NM)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>ME</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>ME (Mei)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AE at Sea (Mei)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AE at Port (Mei)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>ME (Juni)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AE at Sea (Juni)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AE at Port (Juni)</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Avg/Miles</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Avg/Hari</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Target Parameter ME/Day</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Realisasi Pemakaian ME/Day</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AVE Speed May</th>
-              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AVE Speed June</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Anchorage (Hari)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>At Port (Hari)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Downtime (Hari)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Total (Hari)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Laut (NM)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME (Mei)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea (Mei)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port (Mei)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME (Juni)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea (Juni)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port (Juni)</th>
             </tr>
           </thead>
           <tbody>
             {SHIPS.map((ship, idx) => (
               <tr key={ship}>
-                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center" }}>{idx+1}</td>
-                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left" }}>{ship}</td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
+                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center", border:`1px solid ${C.border}` }}>{idx+1}</td>
+                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:`1px solid ${C.border}` }}>{ship}</td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>

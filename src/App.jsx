@@ -1955,7 +1955,7 @@ function getShipCurrentStatus(ship, voys) {
 }
 
 // --- DASHBOARD ----------------------------------------------------------------
-function Dashboard({ reports, onNew, user }) {
+function Dashboard({ reports, onNew, user, runningHours }) {
   const voys = computeVoyages(reports);
 
   // Get status for each ship
@@ -2060,7 +2060,7 @@ function Dashboard({ reports, onNew, user }) {
 }
 
 // === VOYAGE SUMMARY WITH FILTERS ================================================
-function VoyageSummary({ reports, voys, user }) {
+function VoyageSummary({ reports, voys, user, runningHours }) {
   const [fShip, setFShip] = useState("");
   const [fYear, setFYear] = useState("");
   const [fMonth, setFMonth] = useState("");
@@ -2211,53 +2211,240 @@ function VoyageSummary({ reports, voys, user }) {
     });
     DowntimeDaysByShip[ship] = matchedH / 24;
   });
-  const SailingDaysByShip = {};
-  [...new Set(voys.map(v => v.ship))].forEach(ship => {
-    const shipVoys = (voys || []).filter(v => v.ship === ship);
-    let matchedH = 0;
-    shipVoys.forEach(v => {
-      if (!v.bosv || !v.eosv) return;
-      const segs = splitByMonth(v.bosv, v.eosv);
-      segs.forEach(seg => {
-        const yearOk = !fYear || seg.year === Number(fYear);
-        const monthOk = !fMonth || seg.month === Number(fMonth);
-        if (yearOk && monthOk) matchedH += seg.hours;
-      });
-    });
-    SailingDaysByShip[ship] = matchedH / 24;
-  });
+
+  // Per-ship Anchorage (hari): arr_anchor SBE/EOSV → shift_berth FWE
   const AnchorageDaysByShip = {};
   [...new Set(voys.map(v => v.ship))].forEach(ship => {
     const shipVoys = (voys || []).filter(v => v.ship === ship);
+    let anchH = 0;
     shipVoys.forEach(v => {
-      (v.list || []).forEach(ev => {
-        if (!ev.type || ev.type !== "arr_anchor") return;
-        const t0 = ev[evKey("Drop Anchorage")] || ev[evKey("Drop Anchor")] || ev.ts;
-        let t1 = ev[evKey("SBE/EOSV")] || ev[evKey("EOSV")] || null;
-        if (!t1) return;
-        const segs = splitByMonth(t0, t1);
-        segs.forEach(seg => {
-          const yearOk = !fYear || seg.year === Number(fYear);
-          const monthOk = !fMonth || seg.month === Number(fMonth);
-          if (yearOk && monthOk) AnchorageDaysByShip[ship] = (AnchorageDaysByShip[ship] || 0) + seg.hours;
-        });
+      const arrAnc = (v.list||[]).find(r => r.type === "arr_anchor");
+      if (!arrAnc) return;
+      const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
+      if (!t0) return;
+      const shiftBerth = (v.list||[]).find(r => r.type === "shift_berth");
+      const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
+      const segs = splitByMonth(t0, t1);
+      segs.forEach(seg => {
+        const yearOk = !fYear || seg.year === Number(fYear);
+        const monthOk = !fMonth || seg.month === Number(fMonth);
+        if (yearOk && monthOk) anchH += seg.hours;
       });
     });
-    AnchorageDaysByShip[ship] = (AnchorageDaysByShip[ship] || 0) / 24;
+    AnchorageDaysByShip[ship] = anchH / 24;
   });
-  const AtPortDaysByShip = {};
+
+  // Per-ship Berthing (hours): shift_berth FWE (or arr_berth FWE) → BOSV of NEXT voyage
+  const BerthingHoursByShip = {};
   [...new Set(voys.map(v => v.ship))].forEach(ship => {
-    const shipVoys = (voys || []).filter(v => v.ship === ship);
-    const dtDays = DowntimeDaysByShip[ship] || 0;
-    const anchDays = AnchorageDaysByShip[ship] || 0;
-    const rhKey = `${ship}|${Number(fYear)}|${Number(fMonth)}`;
-    const rhMEh = (parseFloat(runningHours?.[rhKey]?.me) || 0) / 60;
-    const monthDays = daysInSelectedMonth;
-    let atPort = monthDays - dtDays - anchDays - (rhMEh / 24);
-    AtPortDaysByShip[ship] = atPort > 0 ? +atPort.toFixed(2) : 0;
+    const shipVoys = voys.filter(v => v.ship === ship);
+    shipVoys.sort((a,b) => new Date(a.dep?.ts||a.list[0]?.ts||0)-new Date(b.dep?.ts||b.list[0]?.ts||0));
+    shipVoys.forEach((v, idx) => {
+      const shiftBerth = (v.list||[]).find(r => r.type === "shift_berth");
+      const arrBerth   = (v.list||[]).find(r => r.type === "arr_berth");
+      const berthReport = shiftBerth || arrBerth;
+      if (!berthReport) return;
+      const t0 = berthReport[evKey("FWE")] || berthReport.ts;
+      if (!t0) return;
+      const nextV = shipVoys[idx+1];
+      const t1 = nextV?.bosv || new Date().toISOString();
+      const segs = splitByMonth(t0, t1);
+      segs.forEach(seg => {
+        const yearOk = !fYear || seg.year === Number(fYear);
+        const monthOk = !fMonth || seg.month === Number(fMonth);
+        if (yearOk && monthOk) {
+          BerthingHoursByShip[ship] = (BerthingHoursByShip[ship] || 0) + seg.hours;
+        }
+      });
+    });
   });
-  const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
-  const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
+
+  // Per-ship At Port (hari) = Berthing (hari) - (RH_ME / 24) - [ DaysInMonth - TotalDowntime (hari) - Berthing (hari) - Anchorage (hari) ]
+  // Returns null if RH_ME is not filled (same behavior as Management Report)
+  const AtPortDaysByShip = {};
+  SHIPS.forEach(ship => {
+    const berthingH = BerthingHoursByShip[ship] || 0;
+    const anchorageD = AnchorageDaysByShip[ship] || 0;
+    const downtimeD  = DowntimeDaysByShip[ship] || 0;
+    const berthingD = berthingH / 24;
+    const rhKey = `${ship}|${fYear || new Date().getFullYear()}|${fMonth !== "" ? fMonth : new Date().getMonth()}`;
+    const rhMeVal = runningHours?.[rhKey]?.me;
+    // At Port = Berthing - (RH_ME/24) - SisaHari
+    // SisaHari = DaysInMonth - Downtime - Berthing - Anchorage
+    if (rhMeVal === undefined || rhMeVal === null || rhMeVal === "") {
+      AtPortDaysByShip[ship] = null; // RH not filled → show empty (same as Management Report)
+    } else {
+      const rhMe = parseFloat(rhMeVal) || 0;
+      const atPortD = berthingD - (rhMe / 24) - (daysInSelectedMonth - downtimeD - berthingD - anchorageD);
+      AtPortDaysByShip[ship] = atPortD;
+    }
+  });
+
+  // Sailing (Hari) = Total Hari - At Port (Hari) - Anchorage (Hari) - Downtime (Hari)
+  const SailingDaysByShip = {};
+  SHIPS.forEach(ship => {
+    const totalD = daysInSelectedMonth;
+    const atPortD = AtPortDaysByShip[ship];
+    const anchD = AnchorageDaysByShip[ship] || 0;
+    const dtD = DowntimeDaysByShip[ship] || 0;
+    // Only calculate if At Port has a value (RH ME was filled)
+    if (atPortD !== null) {
+      SailingDaysByShip[ship] = Math.max(0, totalD - atPortD - anchD - dtD);
+    } else {
+      SailingDaysByShip[ship] = null;
+    }
+  });
+
+  // Per-ship Total Distance (NM) - same formula as Management Report
+  // Sum of ttl_dist from arr_berth + arr_anchor reports, filtered by selected month/year
+  const TotalDistanceByShip = {};
+  SHIPS.forEach(ship => {
+    const shipEntries = reports
+      .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ship === ship && r.ttl_dist)
+      .filter(r => {
+        const d = new Date(r.ts);
+        const yearOk = !fYear || d.getFullYear() === Number(fYear);
+        const monthOk = !fMonth || d.getMonth() === Number(fMonth);
+        return yearOk && monthOk;
+      });
+    TotalDistanceByShip[ship] = shipEntries.reduce((sum, r) => sum + (parseFloat(r.ttl_dist) || 0), 0);
+  });
+
+  // Helper functions for AVG Speed (same as Management Report)
+  const getFirstArrivalBeforeNoon = (ship, voy, year, month, day) => {
+    const candidates = reports.filter(r =>
+      ["arr_berth","arr_anchor"].includes(r.type) &&
+      r.ship === ship && r.voy === voy &&
+      (() => { const d = new Date(r.ts); return d.getFullYear()===year && d.getMonth()===month && d.getDate()===day; })()
+    );
+    const beforeNoon = candidates.filter(r => { const d = new Date(r.ts); return d.getHours() < 12; });
+    if (beforeNoon.length === 0) return null;
+    beforeNoon.sort((a,b) => new Date(a.ts) - new Date(b.ts));
+    return beforeNoon[0];
+  };
+
+  const getFirstNoonOnDate = (ship, voy, year, month, day) => {
+    const candidates = reports.filter(r =>
+      r.type === "noon" && r.ship === ship && r.voy === voy &&
+      (() => { const d = new Date(r.ts); return d.getFullYear()===year && d.getMonth()===month && d.getDate()===day; })()
+    );
+    if (candidates.length === 0) return null;
+    candidates.sort((a,b) => new Date(a.ts) - new Date(b.ts));
+    return candidates[0];
+  };
+
+  // Calculate AVG Speed per ship for current month
+  const AvgSpeedByShip = {};
+  SHIPS.forEach(ship => {
+    let sum = 0, count = 0;
+    const tYear = fYear ? Number(fYear) : new Date().getFullYear();
+    const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+    const nextMonth = tMonth + 1;
+    const nextYear = nextMonth > 11 ? tYear + 1 : tYear;
+    const nextMonthIdx = nextMonth > 11 ? 0 : nextMonth;
+    const shipVoys = voys.filter(v => v.ship === ship);
+
+    // 1. Arrival reports in this month
+    reports
+      .filter(r => ["arr_berth","arr_anchor"].includes(r.type))
+      .filter(r => r.ship === ship)
+      .filter(r => { const d = new Date(r.ts); return d.getFullYear() === tYear && d.getMonth() === tMonth; })
+      .forEach(r => {
+        const spd = parseFloat(r.avg_spd || r.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+      });
+
+    // 2. Voyages still sailing (no arrival in this month) - use speed from June 1st
+    shipVoys.forEach(v => {
+      const hasArrivalInMonth = reports.some(r =>
+        ["arr_berth","arr_anchor"].includes(r.type) &&
+        r.ship === ship && r.voy === v.no &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===tYear && d.getMonth()===tMonth; })()
+      );
+      if (hasArrivalInMonth) return;
+
+      const hasNoonInMonth = reports.some(r =>
+        r.type === "noon" && r.ship === ship && r.voy === v.no &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===tYear && d.getMonth()===tMonth; })()
+      );
+      if (!hasNoonInMonth) return;
+
+      // Try Arrival on 1st of next month, before 12:00
+      const arrBeforeNoon = getFirstArrivalBeforeNoon(ship, v.no, nextYear, nextMonthIdx, 1);
+      if (arrBeforeNoon) {
+        const spd = parseFloat(arrBeforeNoon.avg_spd || arrBeforeNoon.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+        return;
+      }
+
+      // Fallback: Noon Report on 1st of next month
+      const noonOn1st = getFirstNoonOnDate(ship, v.no, nextYear, nextMonthIdx, 1);
+      if (noonOn1st) {
+        const spd = parseFloat(noonOn1st.avg_spd || noonOn1st.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+      }
+    });
+
+    AvgSpeedByShip[ship] = count > 0 ? (sum / count).toFixed(2) : null;
+  });
+
+  // Calculate AVG Speed per ship for PREVIOUS month
+  const AvgSpeedPrevByShip = {};
+  SHIPS.forEach(ship => {
+    let sum = 0, count = 0;
+    const tYear = fYear ? Number(fYear) : new Date().getFullYear();
+    const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+    const prevMonth = tMonth - 1;
+    const prevYear = prevMonth < 0 ? tYear - 1 : tYear;
+    const prevMonthIdx = prevMonth < 0 ? 11 : prevMonth;
+    const shipVoys = voys.filter(v => v.ship === ship);
+
+    // 1. Arrival reports in previous month
+    reports
+      .filter(r => ["arr_berth","arr_anchor"].includes(r.type))
+      .filter(r => r.ship === ship)
+      .filter(r => { const d = new Date(r.ts); return d.getFullYear() === prevYear && d.getMonth() === prevMonthIdx; })
+      .forEach(r => {
+        const spd = parseFloat(r.avg_spd || r.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+      });
+
+    // 2. Voyages still sailing in previous month - use speed from this month 1st
+    shipVoys.forEach(v => {
+      const hasArrivalInPrevMonth = reports.some(r =>
+        ["arr_berth","arr_anchor"].includes(r.type) &&
+        r.ship === ship && r.voy === v.no &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===prevYear && d.getMonth()===prevMonthIdx; })()
+      );
+      if (hasArrivalInPrevMonth) return;
+
+      const hasNoonInPrevMonth = reports.some(r =>
+        r.type === "noon" && r.ship === ship && r.voy === v.no &&
+        (() => { const d = new Date(r.ts); return d.getFullYear()===prevYear && d.getMonth()===prevMonthIdx; })()
+      );
+      if (!hasNoonInPrevMonth) return;
+
+      // Try Arrival on 1st of this month, before 12:00
+      const arrBeforeNoon = getFirstArrivalBeforeNoon(ship, v.no, tYear, tMonth, 1);
+      if (arrBeforeNoon) {
+        const spd = parseFloat(arrBeforeNoon.avg_spd || arrBeforeNoon.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+        return;
+      }
+
+      // Fallback: Noon Report on 1st of this month
+      const noonOn1st = getFirstNoonOnDate(ship, v.no, tYear, tMonth, 1);
+      if (noonOn1st) {
+        const spd = parseFloat(noonOn1st.avg_spd || noonOn1st.spd);
+        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
+      }
+    });
+
+    AvgSpeedPrevByShip[ship] = count > 0 ? (sum / count).toFixed(2) : null;
+  });
+
+  const resetFilters = () => { setFYear(""); setFMonth(""); };
+  const activeCount = [fYear, fMonth].filter(x=>x!=="").length;
 
   return (
     <div>
@@ -2279,19 +2466,19 @@ function VoyageSummary({ reports, voys, user }) {
         <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
           <thead>
             <tr>
-              <th colSpan={16} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
-                {fYear ? fYear : "2026"}
+              <th colSpan={17} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
+                {fYear ? fYear : new Date().getFullYear()}
               </th>
             </tr>
             <tr>
-              <th colSpan={16} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
+              <th colSpan={17} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
                 {curLabel}
               </th>
             </tr>
             <tr>
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>No</th>
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Nama Kapal</th>
-              <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
+              <th colSpan={7} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
               <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Konsumsi BBM (Litre)</th>
               <th colSpan={4} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance + AVG Speed</th>
             </tr>
@@ -2302,6 +2489,7 @@ function VoyageSummary({ reports, voys, user }) {
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Downtime (Hari)</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Total (Hari)</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Laut (NM)</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Jarak Laut (NM)</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({prevLabel})</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({prevLabel})</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({prevLabel})</th>
@@ -2317,33 +2505,34 @@ function VoyageSummary({ reports, voys, user }) {
               <tr key={ship}>
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center", border:"1px solid rgba(40,110,170,0.5)" }}>{idx+1}</td>
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:"1px solid rgba(40,110,170,0.5)" }}>{ship}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(SailingDaysByShip[ship] || 0).toFixed(2)}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(SailingDaysByShip[ship] !== null ? SailingDaysByShip[ship].toFixed(2) : "—")}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(AnchorageDaysByShip[ship] || 0).toFixed(2)}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AtPortDaysByShip[ship] ?? "—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(AtPortDaysByShip[ship] !== null ? AtPortDaysByShip[ship].toFixed(2) : "—")}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(DowntimeDaysByShip[ship] || 0).toFixed(2)}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{daysInSelectedMonth}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(TotalDistanceByShip[ship] || 0).toFixed(1)}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedPrevByShip[ship] || "—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedByShip[ship] || "—"}</td>
               </tr>
-            )}
+            ))}
           </tbody>
-              <tfoot>
+          <tfoot>
             <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
               <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
               <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>
-              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(SailingDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
-              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(AnchorageDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
-              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(AtPortDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
-              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(DowntimeDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
-              <td style={{ ...ss.td(1), textAlign:"center" }}>{daysInSelectedMonth}</td>
-              <td style={{ ...ss.td(1), textAlign:"center" }}>—</td>
+              <td style={ss.td(1)}>{(() => { const vals = Object.values(SailingDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
+              <td style={ss.td(1)}>{Object.values(AnchorageDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
+              <td style={ss.td(1)}>{(() => { const vals = Object.values(AtPortDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
+              <td style={ss.td(1)}>{Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
+              <td style={ss.td(1)}>{daysInSelectedMonth}</td>
+              <td style={ss.td(1)}>{Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)}</td>
+              <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
@@ -2356,11 +2545,9 @@ function VoyageSummary({ reports, voys, user }) {
           </tfoot>
         </table>
       </div>
-      {(fYear || fMonth) && (
-        <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
-          * Filter aktif: {fYear ? fYear : 'semua tahun'} / {fMonth ? MONTHS[fMonth] : 'semua bulan'}. Kolom akan diisi formula sesuai bulan terpilih.
-        </div>
-      )}
+      <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
+        * Default: {new Date().getFullYear()} / {MONTHS[new Date().getMonth()]}. Kolom At Port & Sailing membutuhkan data Running Hours ME per kapal. Kolom Jarak Laut = Total Distance. AVG Speed menggunakan data dari Arrival Report.
+      </div>
     </div>
   );
 }
@@ -3619,9 +3806,12 @@ function ManagementReport({ reports, runningHours, user }) {
     const anchorageDays  = totalAnchorageH / 24;
     const downtimeDays   = totalDtH / 24;
     const rhKey = `${effectiveShip}|${fYear}|${fMonth}`;
-    const rhMe = parseFloat(runningHours[rhKey]?.me) || 0;
-
-    atPortDays = berthingDays - ((rhMe / 24) - (daysInMonth - downtimeDays - berthingDays - anchorageDays));
+    const rhMeVal = runningHours[rhKey]?.me;
+    // If RH ME is not filled, show empty (same behavior as Vessel Activity)
+    if (rhMeVal !== undefined && rhMeVal !== null && rhMeVal !== "") {
+      const rhMe = parseFloat(rhMeVal) || 0;
+      atPortDays = berthingDays - ((rhMe / 24) - (daysInMonth - downtimeDays - berthingDays - anchorageDays));
+    }
   }
 
   return (
@@ -4050,7 +4240,7 @@ export default function App() {
           </nav>
         )}
         <main style={{ ...ss.main, paddingBottom: isMobile ? 80 : 22 }}>
-          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user}/>}
+          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user} runningHours={runningHours}/>}
           {page==="new"       && <ReportForm onSave={addReport} onCancel={() => setPage("dashboard")} allReports={visibleReports} user={user}/>}
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
           {page==="log"       && <ReportLog reports={visibleReports} onView={setViewing} user={user}/>}

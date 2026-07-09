@@ -2194,6 +2194,24 @@ function VoyageSummary({ reports, voys, user }) {
     return new Date(y, m + 1, 0).getDate();
   })();
 
+  const DowntimeDaysByShip = {};
+  [...new Set(voys.map(v => v.ship))].forEach(ship => {
+    const shipVoys = (voys || []).filter(v => v.ship === ship);
+    let matchedH = 0;
+    shipVoys.forEach(v => {
+      (v.dts || []).forEach(dt => {
+        if (!dt.t0 || !dt.t1) return;
+        const segs = splitByMonth(dt.t0, dt.t1);
+        segs.forEach(seg => {
+          const yearOk = !fYear || seg.year === Number(fYear);
+          const monthOk = !fMonth || seg.month === Number(fMonth);
+          if (yearOk && monthOk) matchedH += seg.hours;
+        });
+      });
+    });
+    DowntimeDaysByShip[ship] = matchedH / 24;
+  });
+
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 
@@ -2257,8 +2275,8 @@ function VoyageSummary({ reports, voys, user }) {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(DowntimeDaysByShip[ship] || 0).toFixed(2)}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{daysInSelectedMonth}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>

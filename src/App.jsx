@@ -2056,49 +2056,37 @@ function Dashboard({ reports, onNew, user }) {
 
       <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Activity</div>
       <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:22 }}>
-        <table style={{ ...ss.tbl, minWidth:1200 }}>
+        <table style={{ ...ss.tbl, minWidth:1200, tableLayout:"auto" }}>
           <thead>
             <tr>
-              <th style={ss.th} rowSpan={2}>No</th>
-              <th style={ss.th} rowSpan={2}>Nama Kapal</th>
-              <th style={ss.th} colSpan={4}>Hari</th>
-              <th style={ss.th} rowSpan={2}>Laut (NM)</th>
-              <th style={ss.th} colSpan={2}>ME (Main Engine) - AE at Sea</th>
-              <th style={ss.th} colSpan={2}>ME - AE at Port</th>
-              <th style={ss.th} colSpan={3}>Konsumsi BBM (Litre)</th>
-              <th style={ss.th} rowSpan={2}>Avg/Miles (June)</th>
-              <th style={ss.th} rowSpan={2}>Avg/Hari (June)</th>
-              <th style={ss.th} rowSpan={2}>Target Parameter ME/Day</th>
-              <th style={ss.th} rowSpan={2}>Realisasi Pemaian (ME/Day)</th>
-              <th style={ss.th} colSpan={2}>AVE Speed</th>
+              <th style={ss.th} rowSpan={2}>NO</th>
+              <th style={ss.th} rowSpan={2}>NAMA KAPAL</th>
+              <th style={ss.th} colSpan={4}>HARI</th>
+              <th style={ss.th} rowSpan={2}>LAUT (NM)</th>
+              <th style={ss.th} colSpan={2}>ME (MAIN ENGINE) - AE AT SEA</th>
+              <th style={ss.th} colSpan={2}>ME - AE AT PORT</th>
+              <th style={ss.th} colSpan={3}>KONSUMSI BBM (LITRE)</th>
+              <th style={ss.th} rowSpan={2}>AVG/F (JUNE)</th>
             </tr>
             <tr>
-              <th style={ss.th}>Sailing (Hari)</th>
-              <th style={ss.th}>Anchorage (Hari)</th>
-              <th style={ss.th}>At Port (Hari)</th>
-              <th style={ss.th}>Downtime (Hari)</th>
-              <th style={ss.th}>Mei</th>
-              <th style={ss.th}>Juni</th>
-              <th style={ss.th}>Mei</th>
-              <th style={ss.th}>Juni</th>
+              <th style={ss.th}>SAILING (HARI)</th>
+              <th style={ss.th}>ANCHORAGE (HARI)</th>
+              <th style={ss.th}>AT PORT (HARI)</th>
+              <th style={ss.th}>DOWNTIME (HARI)</th>
+              <th style={ss.th}>MEI</th>
+              <th style={ss.th}>JUNI</th>
+              <th style={ss.th}>MEI</th>
+              <th style={ss.th}>JUNI</th>
               <th style={ss.th}>ME</th>
-              <th style={ss.th}>AE at Sea</th>
-              <th style={ss.th}>AE at Port</th>
-              <th style={ss.th}>May</th>
-              <th style={ss.th}>June</th>
+              <th style={ss.th}>AE AT SEA</th>
+              <th style={ss.th}>AE AT PORT</th>
             </tr>
           </thead>
           <tbody>
             {SHIPS.map((ship, idx) => (
               <tr key={ship}>
                 <td style={ss.td(idx%2)}>{idx+1}</td>
-                <td style={{ ...ss.td(idx%2), fontWeight:600 }}>{ship}</td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
+                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:120 }}>{ship}</td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>

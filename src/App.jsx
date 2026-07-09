@@ -2487,7 +2487,7 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
             <tr>
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>No</th>
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Nama Kapal</th>
-              <th colSpan={7} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
+              <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
               <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Konsumsi BBM (Litre)</th>
               <th colSpan={4} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance</th>
             </tr>
@@ -2498,7 +2498,6 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Downtime (Hari)</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Total (Hari)</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Laut (NM)</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Jarak Laut (NM)</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({prevLabel})</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({prevLabel})</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({prevLabel})</th>
@@ -2520,7 +2519,7 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(DowntimeDaysByShip[ship] || 0).toFixed(2)}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{daysInSelectedMonth}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(TotalDistanceByShip[ship] || 0).toFixed(1)}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
@@ -2543,7 +2542,7 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
               <td style={ss.td(1)}>{Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
               <td style={ss.td(1)}>{daysInSelectedMonth}</td>
               <td style={ss.td(1)}>{Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)}</td>
-              <td style={ss.td(1)}></td>
+              
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>

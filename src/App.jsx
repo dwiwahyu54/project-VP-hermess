@@ -2231,14 +2231,14 @@ function VoyageSummary({ reports, voys, user }) {
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Downtime (Hari)</th>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Total (Hari)</th>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Laut (NM)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({curLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({curLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({curLabel})</th>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({prevLabel})</th>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({prevLabel})</th>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({prevLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({curLabel})</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({curLabel})</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({curLabel})</th>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {prevLabel}</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
             </tr>
           </thead>
           <tbody>
@@ -2246,6 +2246,8 @@ function VoyageSummary({ reports, voys, user }) {
               <tr key={ship}>
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center", border:`1px solid ${C.border}` }}>{idx+1}</td>
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:`1px solid ${C.border}` }}>{ship}</td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>

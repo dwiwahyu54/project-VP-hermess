@@ -2188,6 +2188,12 @@ function VoyageSummary({ reports, voys, user }) {
 
   const curLabel = fMonth !== "" ? MONTHS[fMonth] : MONTHS[new Date().getMonth()];
   const prevLabel = fMonth !== "" ? MONTHS[(Number(fMonth)+11)%12] : MONTHS[(new Date().getMonth()+11)%12];
+  const daysInSelectedMonth = (() => {
+    const y = fYear ? Number(fYear) : new Date().getFullYear();
+    const m = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+    return new Date(y, m + 1, 0).getDate();
+  })();
+
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 
@@ -2250,7 +2256,7 @@ function VoyageSummary({ reports, voys, user }) {
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:"1px solid rgba(40,110,170,0.5)" }}>{ship}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{daysInSelectedMonth}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>

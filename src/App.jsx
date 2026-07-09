@@ -2262,6 +2262,25 @@ function VoyageSummary({ reports, voys, user }) {
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
+              <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
+              <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       {(fYear || fMonth) && (
@@ -2335,6 +2354,25 @@ function ReportLog({ reports, onView, user }) {
               );
             })}
           </tbody>
+          <tfoot>
+            <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
+              <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
+              <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

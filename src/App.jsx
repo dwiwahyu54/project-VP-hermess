@@ -2215,7 +2215,7 @@ function VoyageSummary({ reports, voys, user }) {
             </tr>
             <tr>
               <th colSpan={15} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
-                {fMonth !== "" ? MONTHS[fMonth] : "June"}
+                {curLabel}
               </th>
             </tr>
             <tr>

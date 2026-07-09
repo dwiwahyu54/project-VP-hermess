@@ -2066,7 +2066,6 @@ function Dashboard({ reports, onNew, user }) {
               <th style={ss.th} colSpan={2}>ME (MAIN ENGINE) - AE AT SEA</th>
               <th style={ss.th} colSpan={2}>ME - AE AT PORT</th>
               <th style={ss.th} colSpan={3}>KONSUMSI BBM (LITRE)</th>
-              <th style={ss.th} colSpan={3}>KONSUMSI BBM (LITRE)</th>
               <th style={ss.th} rowSpan={2}>AVG/F (JUNE)</th>
             </tr>
             <tr>
@@ -2081,9 +2080,6 @@ function Dashboard({ reports, onNew, user }) {
               <th style={ss.th}>ME</th>
               <th style={ss.th}>AE AT SEA</th>
               <th style={ss.th}>AE AT PORT</th>
-              <th style={ss.th}>ME</th>
-              <th style={ss.th}>AE AT SEA</th>
-              <th style={ss.th}>AE AT PORT</th>
             </tr>
           </thead>
           <tbody>
@@ -2091,8 +2087,6 @@ function Dashboard({ reports, onNew, user }) {
               <tr key={ship}>
                 <td style={ss.td(idx%2)}>{idx+1}</td>
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:120 }}>{ship}</td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>

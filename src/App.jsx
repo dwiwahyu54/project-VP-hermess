@@ -1,5 +1,37 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+// --- XLSX FOR EXPORT ---
+const XLSX_CDN = "https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";
+let XLSX = null;
+
+function loadXLSX() {
+  return new Promise((resolve, reject) => {
+    if (XLSX) { resolve(XLSX); return; }
+    const script = document.createElement("script");
+    script.src = XLSX_CDN;
+    script.onload = () => { XLSX = window.XLSX; resolve(XLSX); };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function downloadMultiSheetExcel(sheets, filename) {
+  try {
+    await loadXLSX();
+    const wb = XLSX.utils.book_new();
+    sheets.forEach((sheet) => {
+      const ws = XLSX.utils.aoa_to_sheet(sheet.data);
+      if (sheet.widths) {
+        ws['!cols'] = sheet.widths.map(w => ({ wch: w }));
+      }
+      XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+    });
+    XLSX.writeFile(wb, filename);
+  } catch (err) {
+    console.error("Error:", err);
+    alert("Gagal generate Excel. Pastikan koneksi internet stabil.");
+  }
+}
 
 // --- CONSTANTS ----------------------------------------------------------------
 const SHIPS = ["Express Mas","Mavendra Mas","Prakarsa Mas","Pratama Mas","Semangat Mas","Segoro Mas","Sahabat Mas","Selaras Mas"];
@@ -2454,6 +2486,113 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
     setFMonth(String(currentMonth)); 
   };
   const activeCount = [fYear, fMonth].filter(x=>x!=="").length;
+   // ============================================================
+// FUNGSI DOWNLOAD EXCEL
+// ============================================================
+const handleDownloadExcel = async () => {
+  const MONTHS_ID = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const tYear = Number(fYear) || new Date().getFullYear();
+  const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+  const prevMonth = tMonth - 1 < 0 ? 11 : tMonth - 1;
+  const curLabel = MONTHS_ID[tMonth];
+  const prevLabel = MONTHS_ID[prevMonth];
+
+  // SHEET 1: VESSEL ACTIVITY
+  const activityHeaders = [
+    "No", "Nama Kapal",
+    "Sailing (Hari)", "Anchorage (Hari)", "At Port (Hari)", "Downtime (Hari)", "Total (Hari)", "Laut (NM)",
+    `ME ${prevLabel}`, `AE at Sea ${prevLabel}`, `AE at Port ${prevLabel}`,
+    `ME ${curLabel}`, `AE at Sea ${curLabel}`, `AE at Port ${curLabel}`,
+    `AVG Speed ${prevLabel}`, `AVG Speed ${curLabel}`
+  ];
+  
+  const activityData = [activityHeaders];
+  
+  SHIPS.forEach((ship, idx) => {
+    activityData.push([
+      idx + 1,
+      ship,
+      SailingDaysByShip[ship] !== null ? SailingDaysByShip[ship].toFixed(2) : "",
+      (AnchorageDaysByShip[ship] || 0).toFixed(2),
+      AtPortDaysByShip[ship] !== null ? AtPortDaysByShip[ship].toFixed(2) : "",
+      (DowntimeDaysByShip[ship] || 0).toFixed(2),
+      daysInSelectedMonth,
+      (TotalDistanceByShip[ship] || 0).toFixed(1),
+      "", "", "",
+      "", "", "",
+      AvgSpeedPrevByShip[ship] || "",
+      AvgSpeedByShip[ship] || ""
+    ]);
+  });
+  
+  const sailVals = Object.values(SailingDaysByShip).filter(v => v !== null);
+  const atPortVals = Object.values(AtPortDaysByShip).filter(v => v !== null);
+  activityData.push([
+    "TOTAL", "",
+    sailVals.length > 0 ? sailVals.reduce((s,v)=>s+v,0).toFixed(2) : "",
+    Object.values(AnchorageDaysByShip).reduce((s,h)=>s+h,0).toFixed(2),
+    atPortVals.length > 0 ? atPortVals.reduce((s,v)=>s+v,0).toFixed(2) : "",
+    Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2),
+    daysInSelectedMonth,
+    Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1),
+    "", "", "", "", "", "", ""
+  ]);
+
+  // SHEET 2: ANCHORAGE TIME
+  const anchHeaders = ["Nama Kapal", "Bulan", "Tahun", "Anchorage (EOSV Arrival)", "Berthing (FWE)", "Anchorage Time (hari)"];
+  const anchData = [anchHeaders];
+  const anchEntries = getAnchorageTimeEntries(reports);
+  anchEntries.forEach(e => {
+    const segs = splitByMonth(e.t0, e.t1);
+    segs.forEach(seg => {
+      const yearOk = !fYear || seg.year === Number(fYear);
+      const monthOk = !fMonth || seg.month === Number(fMonth);
+      if (yearOk && monthOk) {
+        anchData.push([e.ship, MONTHS_ID[seg.month], seg.year, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (seg.hours/24).toFixed(2)]);
+      }
+    });
+  });
+
+  // SHEET 3: BERTHING TIME
+  const berthHeaders = ["Nama Kapal", "Bulan", "Tahun", "Berthing (FWE)", "Departure (BOSV)", "Berthing Time (hari)"];
+  const berthData = [berthHeaders];
+  const berthEntries = getBerthingTimeEntries(reports);
+  berthEntries.forEach(e => {
+    const segs = splitByMonth(e.t0, e.t1);
+    segs.forEach(seg => {
+      const yearOk = !fYear || seg.year === Number(fYear);
+      const monthOk = !fMonth || seg.month === Number(fMonth);
+      if (yearOk && monthOk) {
+        berthData.push([e.ship, MONTHS_ID[seg.month], seg.year, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (seg.hours/24).toFixed(2)]);
+      }
+    });
+  });
+
+  // SHEET 4: DOWNTIME REPORT
+  const dtHeaders = ["Nama Kapal", "Start Downtime", "Finish Downtime", "Duration (days)", "Reason", "Category"];
+  const dtData = [dtHeaders];
+  const dtEntries = getAllDowntimeEntries(reports);
+  dtEntries.forEach(e => {
+    const segs = splitByMonth(e.t0, e.t1);
+    segs.forEach(seg => {
+      const yearOk = !fYear || seg.year === Number(fYear);
+      const monthOk = !fMonth || seg.month === Number(fMonth);
+      if (yearOk && monthOk) {
+        dtData.push([e.ship, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (seg.hours/24).toFixed(2), e.reason || "", e.category || ""]);
+      }
+    });
+  });
+
+  // DOWNLOAD
+  const sheets = [
+    { name: "Vessel Activity", data: activityData, widths: [5, 20, 14, 14, 14, 14, 10, 12, 12, 14, 14, 12, 14, 14, 14, 14] },
+    { name: "Anchorage Time", data: anchData, widths: [18, 12, 8, 22, 22, 16] },
+    { name: "Berthing Time", data: berthData, widths: [18, 12, 8, 22, 22, 16] },
+    { name: "Downtime Report", data: dtData, widths: [18, 20, 20, 14, 30, 18] }
+  ];
+  
+  await downloadMultiSheetExcel(sheets, `MMM_Report_${tYear}_${curLabel}.xlsx`);
+};
 
   return (
     <div>
@@ -2468,90 +2607,14 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
           {MONTHS.map((m,idx)=><option key={m} value={idx}>{m}</option>)}
         </select>
         {activeCount > 0 && (
-          <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>
-        )}
+        <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>)}
+        <button 
+         style={{ ...ss.btn, background:"linear-gradient(135deg,#25D366,#128C7E)", padding:"6px 16px", marginLeft:"auto" }}
+        onClick={handleDownloadExcel}>
+        ⬇️ Download Excel
+        </button>
+        
       </div>
-
-      <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap", alignItems:"center" }}>
-        <button
-          style={{ ...ss.btn, background:C.accent, color:"#fff", fontSize:9, padding:"5px 14px", fontWeight:700, letterSpacing:"0.04em" }}
-          onClick={() => {
-            const curYear = fYear || String(new Date().getFullYear());
-            const curMon  = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
-            const prevMon = (curMon + 11) % 12;
-            const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-            const curLabel = MONTHS[curMon];
-            const prevLabel = MONTHS[prevMon];
-
-            const sheet1Rows = SHIPS.map((ship, idx) => [
-              idx + 1, ship,
-              (SailingDaysByShip[ship] !== null ? SailingDaysByShip[ship].toFixed(2) : "—"),
-              (AnchorageDaysByShip[ship] || 0).toFixed(2),
-              (AtPortDaysByShip[ship] !== null ? AtPortDaysByShip[ship].toFixed(2) : "—"),
-              (DowntimeDaysByShip[ship] || 0).toFixed(2),
-              daysInSelectedMonth,
-              (TotalDistanceByShip[ship] || 0).toFixed(1),
-              "","","","","","",
-              AvgSpeedPrevByShip[ship] || "—",
-              AvgSpeedByShip[ship] || "—",
-            ]);
-            const tv = Object.values(SailingDaysByShip).filter(v => v !== null);
-            const sheet1Footer = [
-              "TOTAL","",
-              tv.length > 0 ? tv.reduce((s,v)=>s+v,0).toFixed(2) : "—",
-              Object.values(AnchorageDaysByShip).reduce((s,h)=>s+h,0).toFixed(2),
-              (() => { const v=Object.values(AtPortDaysByShip).filter(x=>x!==null); return v.length?v.reduce((s,x)=>s+x,0).toFixed(2):"—"; })(),
-              Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2),
-              daysInSelectedMonth,
-              Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1),
-              "","","","","","","",""
-            ];
-
-            const ancEntries = getAnchorageTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
-            const sheet2Rows = [];
-            ancEntries.forEach(e => {
-              const segs = splitByMonth(e.t0, e.t1);
-              segs.forEach(seg => {
-                if ((!fYear || seg.year === Number(fYear)) && (!fMonth || seg.month === Number(fMonth))) {
-                  sheet2Rows.push([e.ship, e.voy||"", fmtDT(seg.start), fmtDT(seg.end), (seg.hours/24).toFixed(4), seg.hours.toFixed(2)+" hrs"]);
-                }
-              });
-            });
-
-            const dtEntries = getAllDowntimeEntries(reports).filter(e => !fShip || e.ship === fShip);
-            const sheet3Rows = [];
-            dtEntries.forEach(e => {
-              const segs = splitByMonth(e.t0, e.t1);
-              segs.forEach(seg => {
-                if ((!fYear || seg.year === Number(fYear)) && (!fMonth || seg.month === Number(fMonth))) {
-                  sheet3Rows.push([e.ship, e.voy||"", fmtDT(seg.start), fmtDT(seg.end), (seg.hours/24).toFixed(4), seg.hours.toFixed(2)+" hrs", e.reason||"", e.category||""]);
-                }
-              });
-            });
-
-            const berthEntries = getBerthingTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
-            const sheet4Rows = [];
-            berthEntries.forEach(e => {
-              const segs = splitByMonth(e.t0, e.t1);
-              segs.forEach(seg => {
-                if ((!fYear || seg.year === Number(fYear)) && (!fMonth || seg.month === Number(fMonth))) {
-                  sheet4Rows.push([e.ship, e.voy||"", fmtDT(seg.start), fmtDT(seg.end), (seg.hours/24).toFixed(4), seg.hours.toFixed(2)+" hrs"]);
-                }
-              });
-            });
-
-            const sheets = [
-              { name:"Vessel Activity", headers:["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total (Hari)","Laut (NM)","ME "+prevLabel,"AE at Sea "+prevLabel,"AE at Port "+prevLabel,"ME "+curLabel,"AE at Sea "+curLabel,"AE at Port "+curLabel,"AVG Speed "+prevLabel,"AVG Speed "+curLabel], rows:[...sheet1Rows, sheet1Footer] },
-              { name:"Anchorage Time", headers:["Vessel","Voyage","Start","Finish","Duration (Days)","Duration (Hours)"], rows:sheet2Rows },
-              { name:"Downtime Report", headers:["Vessel","Voyage","Start","Finish","Duration (Days)","Duration (Hours)","Reason","Category"], rows:sheet3Rows },
-              { name:"Berthing Time", headers:["Vessel","Voyage","Start","Finish","Duration (Days)","Duration (Hours)"], rows:sheet4Rows },
-            ];
-            const fname = `voyage-summary_${curYear}_${curLabel.replace(/\s+/g,'-')}${fShip ? '_'+fShip.replace(/\s+/g,'-') : ''}.xlsx`;
-            downloadXLSX(sheets, fname);
-          }}
-        >EXPORT XLSX</button>
-      </div>
-
       <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:12 }}>
         <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
           <thead>
@@ -2918,17 +2981,6 @@ function downloadCSVRaw(csvContent, filename) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-
-function downloadXLSX(sheets, filename) {
-  /* sheets = [ { name, headers, rows }, ... ] */
-  const wb = XLSX.utils.book_new();
-  sheets.forEach(({ name, headers, rows }) => {
-    const data = [headers, ...rows];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, name);
-  });
-  XLSX.writeFile(wb, filename);
-}
 }
 
 function RunningHoursInput({ rhKey, current, onSave }) {
@@ -3549,6 +3601,7 @@ function ManagementReport({ reports, runningHours, user }) {
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 
+
   const handleExport = () => {
     const filenameParts = ["downtime-report"];
     if (fShip) filenameParts.push(fShip.replace(/\s+/g,"_"));
@@ -3959,26 +4012,8 @@ function ManagementReport({ reports, runningHours, user }) {
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
             <div style={{ fontSize:12, fontWeight:700, color:C.accent }}>Detail Downtime</div>
             <button style={{ ...ss.btn, fontSize:11, padding:"6px 14px" }} onClick={handleExport}>
-              <button
-                style={{ ...ss.btn, fontSize:11, padding:"6px 14px", background:C.accent, color:"#fff", fontWeight:700 }}
-                onClick={() => {
-                  const curLbl = fMonth !== '' ? MONTHS[Number(fMonth)] : 'All';
-                  const prevLbl = fMonth !== '' ? MONTHS[(Number(fMonth)+11)%12] : 'All';
-                  const s1h = ["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total (Hari)","Laut (NM)","AVG Speed "+prevLbl,"AVG Speed "+curLbl];
-                  const s1rows = SHIPS.map((ship, idx) => [idx+1, ship,"","","","","","","",""]);
-                  const s1 = { name:"Vessel Activity", headers:s1h, rows:s1rows };
-                  const s2h = ["Vessel","Voyage","Start","Finish","Duration (Days)","Duration (Hours)"];
-                  const s2rows = anchorageDetailRows.map(e => [e.ship, e.voy||'', fmtDT(e.t0), fmtDT(e.t1), (e.hours/24).toFixed(4), `${e.hours.toFixed(2)} hrs`]);
-                  const s2 = { name:"Anchorage Time", headers:s2h, rows:s2rows };
-                  const s3h = ["Vessel","Voyage","Start","Finish","Duration (Days)","Duration (Hours)","Reason","Category"];
-                  const s3rows = matchedEntries.map(e => [e.ship, e.voy||'', fmtDT(e.t0), fmtDT(e.t1), (e.durationH/24).toFixed(4), `${e.durationH.toFixed(2)} hrs`, e.reason||'', e.category||'']);
-                  const s3 = { name:"Downtime Report", headers:s3h, rows:s3rows };
-                  const s4h = ["Vessel","Voyage","Start","Finish","Duration (Days)","Duration (Hours)"];
-                  const s4rows = berthingDetailRows.map(e => [e.ship, e.voy||'', fmtDT(e.t0), fmtDT(e.t1), (e.hours/24).toFixed(4), `${e.hours.toFixed(2)} hrs`]);
-                  const s4 = { name:"Berthing Time", headers:s4h, rows:s4rows };
-                  downloadXLSX([s1,s2,s3,s4], `management-report_${fYear||'all'}_${curLbl.replace(' ','-')}.xlsx`);
-                }}
-              >EXPORT XLSX</button>
+              ⬇️ Download CSV
+            </button>
           </div>
           <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto" }}>
             <table className="voyage-main-table" style={{ ...ss.tbl, minWidth:640 }}>

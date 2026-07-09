@@ -2208,7 +2208,7 @@ function VoyageSummary({ reports, voys, user }) {
         )}
       </div>
       <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:12 }}>
-        <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:2200, fontSize:11, borderRight:`1px solid ${C.border}` }}>
           <thead>
             <tr>
               <th colSpan={15} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
@@ -2249,7 +2249,7 @@ function VoyageSummary({ reports, voys, user }) {
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center", border:"1px solid rgba(40,110,170,0.5)" }}>{idx+1}</td>
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:"1px solid rgba(40,110,170,0.5)" }}>{ship}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), borderRight:"1px solid rgba(40,110,170,0.5)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
@@ -2280,7 +2280,7 @@ function VoyageSummary({ reports, voys, user }) {
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
+              <td style={{ ...ss.td(1), borderRight:"1px solid rgba(40,110,170,0.5)" }}></td>
             </tr>
           </tfoot>
         </table>

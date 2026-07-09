@@ -2064,7 +2064,6 @@ function Dashboard({ reports, onNew, user }) {
               <th style={ss.th} colSpan={4}>HARI</th>
               <th style={ss.th} rowSpan={2}>LAUT (NM)</th>
               <th style={ss.th} colSpan={2}>ME (MAIN ENGINE) - AE AT SEA</th>
-              <th style={ss.th} colSpan={2}>ME - AE AT PORT</th>
               <th style={ss.th} colSpan={3}>KONSUMSI BBM (LITRE)</th>
               <th style={ss.th} rowSpan={2}>AVG/F (JUNE)</th>
             </tr>

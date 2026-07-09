@@ -2184,6 +2184,8 @@ function VoyageSummary({ reports, voys, user }) {
           matchedVoyageCount, sailConsMFO, sailConsMDO, portConsMFO, portConsMDO } = computed;
   const totalSailDays = totalSailH / 24;
 
+  const curLabel = fMonth !== "" ? MONTHS[fMonth] : "June";
+  const prevLabel = fMonth !== "" ? MONTHS[(Number(fMonth)+11)%12] : "Mei";
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 
@@ -2204,19 +2206,24 @@ function VoyageSummary({ reports, voys, user }) {
         )}
       </div>
       <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:12 }}>
-        <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1600, fontSize:11 }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
           <thead>
             <tr>
-              <th colSpan={13} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>2026</th>
+              <th colSpan={15} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
+                {fYear ? fYear : "2026"}
+              </th>
             </tr>
             <tr>
-              <th colSpan={13} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>June</th>
+              <th colSpan={15} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
+                {fMonth !== "" ? MONTHS[fMonth] : "June"}
+              </th>
             </tr>
             <tr>
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>No</th>
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Nama Kapal</th>
               <th colSpan={5} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
               <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Konsumsi BBM (Litre)</th>
+              <th colSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance</th>
             </tr>
             <tr>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Anchorage (Hari)</th>
@@ -2224,12 +2231,14 @@ function VoyageSummary({ reports, voys, user }) {
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Downtime (Hari)</th>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Total (Hari)</th>
               <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Laut (NM)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME (Mei)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea (Mei)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port (Mei)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME (Juni)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea (Juni)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port (Juni)</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({curLabel})</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({curLabel})</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({curLabel})</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({prevLabel})</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({prevLabel})</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({prevLabel})</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
+              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {prevLabel}</th>
             </tr>
           </thead>
           <tbody>
@@ -2259,6 +2268,11 @@ function VoyageSummary({ reports, voys, user }) {
         </div>
       )}
     </div>
+  );
+}
+
+function ReportLog({ reports, onView, user }) {
+  const [fShip, setFShip] = useState("");    </div>
   );
 }
 
@@ -3133,6 +3147,8 @@ function ManagementReport({ reports, runningHours, user }) {
     }
   });
 
+  const curLabel = fMonth !== "" ? MONTHS[fMonth] : "June";
+  const prevLabel = fMonth !== "" ? MONTHS[(Number(fMonth)+11)%12] : "Mei";
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 

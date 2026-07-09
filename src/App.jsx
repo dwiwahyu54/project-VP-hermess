@@ -2354,8 +2354,9 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
         if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
       });
 
-    // 2. Voyages still sailing (no arrival in this month) - use speed from June 1st
+    // 2. Active voyages (departed but no arrival) - use latest noon report regardless of month
     shipVoys.forEach(v => {
+      // Skip if already has arrival in this month
       const hasArrivalInMonth = reports.some(r =>
         ["arr_berth","arr_anchor"].includes(r.type) &&
         r.ship === ship && r.voy === v.no &&
@@ -2363,24 +2364,24 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
       );
       if (hasArrivalInMonth) return;
 
-      const hasNoonInMonth = reports.some(r =>
-        r.type === "noon" && r.ship === ship && r.voy === v.no &&
-        (() => { const d = new Date(r.ts); return d.getFullYear()===tYear && d.getMonth()===tMonth; })()
+      // Skip if voyage has no departure at all
+      const hasDeparture = reports.some(r =>
+        ["departure","dep_anchor","shift_anchor"].includes(r.type) &&
+        r.ship === ship && r.voy === v.no
       );
-      if (!hasNoonInMonth) return;
+      if (!hasDeparture) return;
 
-      // Try Arrival on 1st of next month, before 12:00
-      const arrBeforeNoon = getFirstArrivalBeforeNoon(ship, v.no, nextYear, nextMonthIdx, 1);
-      if (arrBeforeNoon) {
-        const spd = parseFloat(arrBeforeNoon.avg_spd || arrBeforeNoon.spd);
-        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
-        return;
-      }
+      // Get the latest noon report for this voyage (regardless of month)
+      const noonReports = reports
+        .filter(r => r.type === "noon" && r.ship === ship && r.voy === v.no)
+        .filter(r => {
+          const spd = parseFloat(r.avg_spd || r.spd);
+          return !isNaN(spd) && spd > 0;
+        })
+        .sort((a, b) => new Date(b.ts) - new Date(a.ts));
 
-      // Fallback: Noon Report on 1st of next month
-      const noonOn1st = getFirstNoonOnDate(ship, v.no, nextYear, nextMonthIdx, 1);
-      if (noonOn1st) {
-        const spd = parseFloat(noonOn1st.avg_spd || noonOn1st.spd);
+      if (noonReports.length > 0) {
+        const spd = parseFloat(noonReports[0].avg_spd || noonReports[0].spd);
         if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
       }
     });
@@ -2466,12 +2467,12 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
         <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
           <thead>
             <tr>
-              <th colSpan={17} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
+              <th colSpan={19} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
                 {fYear ? fYear : new Date().getFullYear()}
               </th>
             </tr>
             <tr>
-              <th colSpan={17} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
+              <th colSpan={19} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
                 {curLabel}
               </th>
             </tr>
@@ -2480,7 +2481,7 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Nama Kapal</th>
               <th colSpan={7} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
               <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Konsumsi BBM (Litre)</th>
-              <th colSpan={4} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance + AVG Speed</th>
+              <th colSpan={4} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance</th>
             </tr>
             <tr>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Sailing (Hari)</th>
@@ -2517,8 +2518,9 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedPrevByShip[ship] || "—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedByShip[ship] || "—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedPrevByShip[ship] || "—"}</td>
               </tr>
             ))}
           </tbody>

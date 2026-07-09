@@ -2226,6 +2226,46 @@ function VoyageSummary({ reports, voys, user }) {
     });
     SailingDaysByShip[ship] = matchedH / 24;
   });
+  const AnchorageDaysByShip = {};
+  [...new Set(voys.map(v => v.ship))].forEach(ship => {
+    const shipVoys = (voys || []).filter(v => v.ship === ship);
+    shipVoys.forEach(v => {
+      (v.list || []).forEach(ev => {
+        if (!ev.type || ev.type !== "arr_anchor") return;
+        const t0 = ev[evKey("Drop Anchorage")] || ev[evKey("Drop Anchor")] || ev.ts;
+        let t1 = ev[evKey("SBE/EOSV")] || ev[evKey("EOSV")] || null;
+        if (!t1) return;
+        const segs = splitByMonth(t0, t1);
+        segs.forEach(seg => {
+          const yearOk = !fYear || seg.year === Number(fYear);
+          const monthOk = !fMonth || seg.month === Number(fMonth);
+          if (yearOk && monthOk) AnchorageDaysByShip[ship] = (AnchorageDaysByShip[ship] || 0) + seg.hours;
+        });
+      });
+    });
+    AnchorageDaysByShip[ship] = (AnchorageDaysByShip[ship] || 0) / 24;
+  });
+  const AtPortDaysByShip = {};
+  [...new Set(voys.map(v => v.ship))].forEach(ship => {
+    const shipVoys = (voys || []).filter(v => v.ship === ship);
+    let berthH = 0;
+    shipVoys.forEach(v => {
+      (v.list || []).forEach(ev => {
+        if (!["arr_berth","shift_berth"].includes(ev.type)) return;
+        const fwe = ev[evKey("FWE")] || null;
+        if (!fwe) return;
+        const end = v.eosv || fwe;
+        if (end <= fwe) return;
+        const segs = splitByMonth(fwe, end);
+        segs.forEach(seg => {
+          const yearOk = !fYear || seg.year === Number(fYear);
+          const monthOk = !fMonth || seg.month === Number(fMonth);
+          if (yearOk && monthOk) berthH += seg.hours;
+        });
+      });
+    });
+    AtPortDaysByShip[ship] = (berthH / 24).toFixed(2);
+  });
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 
@@ -2288,6 +2328,7 @@ function VoyageSummary({ reports, voys, user }) {
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center", border:"1px solid rgba(40,110,170,0.5)" }}>{idx+1}</td>
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:"1px solid rgba(40,110,170,0.5)" }}>{ship}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(SailingDaysByShip[ship] || 0).toFixed(2)}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(AnchorageDaysByShip[ship] || 0).toFixed(2)}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(DowntimeDaysByShip[ship] || 0).toFixed(2)}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{daysInSelectedMonth}</td>

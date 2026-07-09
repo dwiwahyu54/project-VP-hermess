@@ -2319,7 +2319,7 @@ function VoyageSummary({ reports, voys, user }) {
                 <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:"1px solid rgba(40,110,170,0.5)" }}>{ship}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(SailingDaysByShip[ship] || 0).toFixed(2)}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(AnchorageDaysByShip[ship] || 0).toFixed(2)}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AtPortDaysByShip[ship] ?? "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(DowntimeDaysByShip[ship] || 0).toFixed(2)}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{daysInSelectedMonth}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
@@ -2344,6 +2344,7 @@ function VoyageSummary({ reports, voys, user }) {
               <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(DowntimeDaysByShip).reduce((a,b)=>a+(b||0),0).toFixed(2)}</td>
               <td style={{ ...ss.td(1), textAlign:"center" }}>{daysInSelectedMonth}</td>
               <td style={{ ...ss.td(1), textAlign:"center" }}>—</td>
+              <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>

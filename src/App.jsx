@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
-import "./styles.css";
-import * as XLSX from "xlsx";
+
 // --- CONSTANTS ----------------------------------------------------------------
 const SHIPS = ["Express Mas","Mavendra Mas","Prakarsa Mas","Pratama Mas","Semangat Mas","Segoro Mas","Sahabat Mas","Selaras Mas"];
 
@@ -1956,7 +1955,7 @@ function getShipCurrentStatus(ship, voys) {
 }
 
 // --- DASHBOARD ----------------------------------------------------------------
-function Dashboard({ reports, onNew, user, runningHours, consMe }) {
+function Dashboard({ reports, onNew, user }) {
   const voys = computeVoyages(reports);
 
   // Get status for each ship
@@ -2055,375 +2054,150 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
      </table>
       </div>
 
-      <VesselReport reports={reports} voys={voys} user={user} runningHours={runningHours} consMe={consMe}/>
+      <VoyageSummary reports={reports} voys={voys} user={user}/>
     </div>
   );
 }
 
-// === EXCEL-STYLE VESSEL REPORT ================================================
-function VesselReport({ reports, voys, user, runningHours, consMe }) {
+// === VOYAGE SUMMARY WITH FILTERS ================================================
+function VoyageSummary({ reports, voys, user }) {
+  const [fShip, setFShip] = useState("");
   const [fYear, setFYear] = useState("");
   const [fMonth, setFMonth] = useState("");
-  const [meDayParam, setMeDayParam] = useState(1.5);
 
-  const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-  const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
+  const computed = (({ fShip, fYear, fMonth, voys, reports }) => {
+    const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+    const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
+    const shipFiltered = voys.filter(v => !fShip || v.ship === fShip);
+    let totalSailH = 0, totalDtH = 0, totalInPortH = 0, totalAnchorH = 0, matchedVoyageCount = 0;
+    let sailConsMFO = 0, sailConsMDO = 0, portConsMFO = 0, portConsMDO = 0;
 
-  const daysInMonth = (() => {
-    if (fYear === "" || fMonth === "") return 0;
-    return new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();
-  })();
-
-  const curLabel = fMonth !== "" ? MONTHS[Number(fMonth)] : "";
-  const prevMonthIdx = fMonth !== "" ? (Number(fMonth) - 1 + 12) % 12 : null;
-  const prevMonthLabel = prevMonthIdx !== null ? MONTHS[prevMonthIdx] : "";
-  const prevColYear = (() => {
-    if (fYear === "" || fMonth === "") return "";
-    if (Number(fMonth) === 0) return String(Number(fYear) - 1);
-    return fYear;
-  })();
-
-  function getAvgSpeedForShipMonth(ship, year, month) {
-    if (year === "" || month === "") return null;
-    const y = Number(year);
-    const m = Number(month);
-    const nextMonth = m + 1;
-    const nextYear = nextMonth > 11 ? y + 1 : y;
-    const nextMonthIdx = nextMonth > 11 ? 0 : nextMonth;
-    const nextMonthName = MONTHS[nextMonthIdx];
-
-    let sum = 0;
-    let count = 0;
-
-    const shipVoys = (voys||[]).filter(v => v.ship === ship);
-    const shipReports = reports.filter(r => r.ship === ship);
-
-    // 1. Arrival reports in this month
-    shipReports
-      .filter(r => ["arr_berth","arr_anchor"].includes(r.type))
-      .filter(r => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })
-      .forEach(r => {
-        const spd = parseFloat(r.avg_spd || r.spd);
-        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
-      });
-
-    // 2. For each voyage sailing this month with no arrival
-    shipVoys.forEach(v => {
-      const hasArrivalInMonth = shipReports.some(r =>
-        ["arr_berth","arr_anchor"].includes(r.type) && r.voy === v.no &&
-        (() => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })()
-      );
-      if (hasArrivalInMonth) return;
-
-      const hasNoonInMonth = shipReports.some(r =>
-        r.type === "noon" && r.voy === v.no &&
-        (() => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })()
-      );
-      if (!hasNoonInMonth) return;
-
-      // Arrival on 1st next month before noon
-      const arrBeforeNoon = (() => {
-        const candidates = shipReports.filter(r =>
-          ["arr_berth","arr_anchor"].includes(r.type) && r.voy === v.no &&
-          (() => { const d = new Date(r.ts); return d.getFullYear()===nextYear && d.getMonth()===nextMonthIdx && d.getDate()===1; })()
-        );
-        const beforeNoon = candidates.filter(r => new Date(r.ts).getHours() < 12);
-        if (beforeNoon.length === 0) return null;
-        beforeNoon.sort((a,b) => new Date(a.ts) - new Date(b.ts));
-        return beforeNoon[0];
-      })();
-
-      if (arrBeforeNoon) {
-        const spd = parseFloat(arrBeforeNoon.avg_spd || arrBeforeNoon.spd);
-        if (!isNaN(spd) && spd > 0) { sum += spd; count++; return; }
-      }
-
-      // Fallback: Noon on 1st next month
-      const noonOn1st = shipReports.find(r =>
-        r.type === "noon" && r.voy === v.no &&
-        (() => { const d = new Date(r.ts); return d.getFullYear()===nextYear && d.getMonth()===nextMonthIdx && d.getDate()===1; })()
-      );
-      if (noonOn1st) {
-        const spd = parseFloat(noonOn1st.avg_spd || noonOn1st.spd);
-        if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
-      }
+    const shipVoyMap = {};
+    voys.filter(v => !fShip || v.ship === fShip).forEach(v => {
+      if (!shipVoyMap[v.ship]) shipVoyMap[v.ship] = [];
+      shipVoyMap[v.ship].push(v);
     });
-
-    // 3. Noon on 1st next month for voyages that departed THIS month
-    const allNoonOn1st = shipReports.filter(r =>
-      r.type === "noon" &&
-      (() => { const d = new Date(r.ts); return d.getFullYear()===nextYear && d.getMonth()===nextMonthIdx && d.getDate()===1; })()
+    Object.values(shipVoyMap).forEach(arr2 =>
+      arr2.sort((a,b) => new Date(a.dep?.ts||0) - new Date(b.dep?.ts||0))
     );
-    allNoonOn1st.forEach(noon => {
-      const voyDepartureInCur = shipReports.some(r =>
-        ["departure","dep_anchor","shift_anchor"].includes(r.type) && r.voy === noon.voy &&
-        (() => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })()
-      );
-      const hasArrivalInCur = shipReports.some(r =>
-        ["arr_berth","arr_anchor"].includes(r.type) && r.voy === noon.voy &&
-        (() => { const d = new Date(r.ts); return d.getFullYear()===y && d.getMonth()===m; })()
-      );
-      if (!voyDepartureInCur || hasArrivalInCur) return;
-      const spd = parseFloat(noon.avg_spd || noon.spd);
-      if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
-    });
 
-    return count > 0 ? (sum / count) : null;
-  }
-
-  const tableData = (() => {
-    try {
-      const base = SHIPS.map((ship, idx) => ({ ship, no: idx + 1 }));
-
-      const shipVoyMap = {};
-      voys.forEach(v => {
-        if (!shipVoyMap[v.ship]) shipVoyMap[v.ship] = [];
-        shipVoyMap[v.ship].push(v);
+    const addSegs = (t0, t1, bucket) => {
+      if (!t0 || !t1) return false;
+      const segs = splitByMonth(t0, t1); let added = false;
+      segs.forEach(seg => {
+        const yearOk  = !fYear  || seg.year === Number(fYear);
+        const monthOk = !fMonth || seg.month === Number(fMonth);
+        if (yearOk && monthOk) { bucket.push(seg.hours); added = true; }
       });
-      Object.values(shipVoyMap).forEach(arr2 =>
-        arr2.sort((a,b) => new Date(a.dep?.ts||0) - new Date(b.dep?.ts||0))
-      );
+      return added;
+    };
 
-      const allDt = getAllDowntimeEntries(reports || []);
-      const allAnc = getAnchorageTimeEntries(reports || []);
-      const allBerth = getBerthingTimeEntries(reports || []);
+    const sailBucket=[], dtBucket=[], portBucket=[], ancBucket=[];
 
-      function monthFilteredSegs(entries, ship) {
-        const out = [];
-        (entries || []).forEach(e => {
-          if (e && e.ship !== ship) return;
-          try {
-            const segs = splitByMonth(e && e.t0, e && e.t1);
-            segs.forEach(seg => {
-              const yOk = !fYear || seg.year === Number(fYear);
-              const mOk = !fMonth || seg.month === Number(fMonth);
-              if (yOk && mOk) out.push(seg.hours);
-            });
-          } catch {}
-        });
-        return out;
-      }
-
-      function getRunningHoursMe(ship, year, month) {
-        const key = `${ship}|${year}|${month}`;
-        const val = runningHours && runningHours[key] && runningHours[key].me;
-        return parseFloat(val || 0);
-      }
-      function getRunningHoursAe(ship, year, month) {
-        const key = `${ship}|${year}|${month}`;
-        const val = runningHours && runningHours[key] && runningHours[key].ae;
-        return parseFloat(val || 0);
-      }
-      function getConsMe(ship, year, month) {
-        const key = `${ship}|${year}|${month}`;
-        const val = consMe && consMe[key] && consMe[key].cons_me;
-        return parseFloat(val || 0);
-      }
-
-      return base.map(row => {
-        const { ship } = row;
-        const shipVoys = (shipVoyMap[ship] || []);
-        const sailSegs = [];
-        let miles = 0;
-
-        shipVoys.forEach(v => {
-          try {
-            if (v && v.bosv && v.eosv) {
-              const segs = splitByMonth(v.bosv, v.eosv);
-              segs.forEach(seg => {
-                const yOk = !fYear || seg.year === Number(fYear);
-                const mOk = !fMonth || seg.month === Number(fMonth);
-                if (yOk && mOk) sailSegs.push(seg.hours);
-              });
-            }
-
-            const shipMiles = (v && v.list || [])
-              .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ttl_dist)
-              .reduce((s, r) => s + (parseFloat(r.ttl_dist) || 0), 0);
-            if (shipMiles > 0) {
-              const eosv = v && (v.eosv || (v.arr && (v.arr[evKey("SBE/EOSV")] || v.arr.ts)) || v.bosv || v.dep?.ts || (v.list && v.list[0]?.ts));
-              const bosv = v && (v.bosv || (v.dep && (v.dep[evKey("BOSV")] || v.dep.ts)) || (v.list && v.list[0]?.ts));
-              if (bosv && eosv) {
-                const totalH = diffH(bosv, eosv);
-                if (totalH > 0) {
-                  const segs = splitByMonth(bosv, eosv);
-                  segs.forEach(seg => {
-                    const yOk = !fYear || seg.year === Number(fYear);
-                    const mOk = !fMonth || seg.month === Number(fMonth);
-                    if (yOk && mOk) miles += shipMiles * (seg.hours / totalH);
-                  });
-                } else if (!fYear && !fMonth) {
-                  miles += shipMiles;
-                }
-              } else if (!fYear && !fMonth) {
-                miles += shipMiles;
-              }
-            }
-          } catch {}
-        });
-
-        const sailH = sailSegs.reduce((s,h)=>s+h,0);
-        const dtH = monthFilteredSegs(allDt, ship).reduce((s,h)=>s+h,0);
-        const ancH = monthFilteredSegs(allAnc, ship).reduce((s,h)=>s+h,0);
-        const berthH = monthFilteredSegs(allBerth, ship).reduce((s,h)=>s+h,0);
-        const sailingDays = daysInMonth > 0 ? Math.max(0, daysInMonth - dtH/24 - ancH/24 - berthH/24) : 0;
-
-        const mePrev = getConsMe(ship, prevColYear || fYear, prevMonthIdx);
-        const aeSeaPrev = getRunningHoursAe(ship, prevColYear || fYear, prevMonthIdx) / 24;
-        const aePortPrev = 0;
-        const meCur = getConsMe(ship, fYear, Number(fMonth));
-        const aeSeaCur = getRunningHoursAe(ship, fYear, Number(fMonth)) / 24;
-        const aePortCur = 0;
-
-        const avgMilesVal = (meCur > 0 && miles > 0) ? meCur / miles : 0;
-        const avgHariVal = (sailingDays > 0 && miles > 0) ? miles / sailingDays : null;
-        const targetMeDay = Number(meDayParam) * 24 || 0;
-        const realisasiVal = targetMeDay > 0 && !isNaN(meCur) ? (meCur / targetMeDay) : null;
-
-        return {
-          ...row,
-          sailDays: sailingDays,
-          dtDays: dtH / 24,
-          anchDays: ancH / 24,
-          portDays: berthH / 24,
-          totalHari: daysInMonth > 0 ? daysInMonth : 0,
-          miles: Math.round(miles),
-          mePrev,
-          aeSeaPrev,
-          aePortPrev,
-          meCur,
-          aeSeaCur,
-          aePortCur,
-          avgMiles: avgMilesVal,
-          avgHari: avgHariVal,
-          targetMeDay,
-          realisasi: realisasiVal != null ? (realisasiVal * 100).toFixed(1) + "%" : "0.0%",
-          aveSpdPrev: prevMonthIdx !== null && !isNaN(Number(fYear)) ? Number(getAvgSpeedForShipMonth(ship, fMonth==="0" ? String(Number(fYear)-1) : fYear, prevMonthIdx)) : null,
-          aveSpdCur: fMonth !== "" && fYear !== "" ? Number(getAvgSpeedForShipMonth(ship, fYear, Number(fMonth))) : null,
-          atPortDays: (() => {
-            try {
-              if (!runningHours || daysInMonth <= 0) return null;
-              const y = fYear;
-              const m = Number(fMonth);
-              if (!y && y !== 0) return null;
-              if (m === "" || isNaN(m)) return null;
-              const rhMeVal = parseFloat(runningHours[`${ship}|${y}|${m}`]?.me) || 0;
-              const val = berthH/24 - (rhMeVal/24) - (daysInMonth - dtH/24 - berthH/24 - anchH/24);
-              return Math.max(0, val);
-            } catch { return null; }
-          })(),
-        };
+    shipFiltered.forEach(v => {
+      let voyMatched = false;
+      if (addSegs(v.bosv, v.eosv, sailBucket)) voyMatched = true;
+      (v.dts || []).forEach(dt => { if (addSegs(dt.t0, dt.t1, dtBucket)) voyMatched = true; });
+      const shelterArrs = (v.list||[]).filter(r=>r.type==="shelter_arr");
+      const shelterDeps = (v.list||[]).filter(r=>r.type==="shelter_dep");
+      shelterArrs.forEach(sa => {
+        const sd = shelterDeps[0];
+        const t0 = sa[evKey("SBE/EOSV")] || sa.ts;
+        const t1 = sd ? (sd[evKey("BOSV")] || sd.ts) : null;
+        if (addSegs(t0, t1, dtBucket)) voyMatched = true;
       });
-    } catch (e) {
-      // Safety fallback: render empty rows if any month-filtered calc explodes
-      return SHIPS.map((ship, idx) => ({
-        ship, no: idx + 1, sailDays: 0, dtDays: 0, anchDays: 0, portDays: 0,
-        totalHari: 0, miles: 0, mePrev: null, aeSeaPrev: null, aePortPrev: null,
-        meCur: null, aeSeaCur: null, aePortCur: null, avgMiles: 0, avgHari: null,
-        targetMeDay: 0, realisasi: "0.0%", aveSpdPrev: null, aveSpdCur: null, atPortDays: null,
-      }));
-    }
-  })({ fYear, fMonth, reports, voys });
+      if (v.inPortT0) {
+        const shipVoys = shipVoyMap[v.ship] || [];
+        const myIdx = shipVoys.findIndex(x => x.no === v.no);
+        const nextVoy = shipVoys[myIdx + 1];
+        const t1 = nextVoy?.bosv || null;
+        if (addSegs(v.inPortT0, t1, portBucket)) voyMatched = true;
+      }
+      (v.anchorIntervals || []).forEach(ai => { if (addSegs(ai.t0, ai.t1, ancBucket)) voyMatched = true; });
+      if (!fYear && !fMonth && (v.sailH || v.dtH || v.inPortT0)) voyMatched = true;
+      if (voyMatched) matchedVoyageCount++;
 
-  const visible = tableData;
+      // Fuel: Cons Sailing — split proportionally by month if BOSV/EOSV available,
+      // otherwise fallback to whole-value assigned to departure month (no data loss)
+      if (v.sailConsMFO != null || v.sailConsMDO != null) {
+        if (v.bosv && v.eosv && diffH(v.bosv, v.eosv) > 0) {
+          const totalSailHrs = diffH(v.bosv, v.eosv);
+          const segs = splitByMonth(v.bosv, v.eosv);
+          segs.forEach(seg => {
+            const yearOk  = !fYear  || seg.year === Number(fYear);
+            const monthOk = !fMonth || seg.month === Number(fMonth);
+            if (yearOk && monthOk) {
+              const proportion = seg.hours / totalSailHrs;
+              if (v.sailConsMFO != null) sailConsMFO += v.sailConsMFO * proportion;
+              if (v.sailConsMDO != null) sailConsMDO += v.sailConsMDO * proportion;
+            }
+          });
+        } else {
+          // Fallback: no BOSV/EOSV — assign whole value to departure's month
+          const fallbackDate = v.dep?.ts || v.list[0]?.ts;
+          const yearOk  = !fYear  || (fallbackDate && new Date(fallbackDate).getFullYear() === Number(fYear));
+          const monthOk = !fMonth || (fallbackDate && new Date(fallbackDate).getMonth() === Number(fMonth));
+          if ((!fYear && !fMonth) || (yearOk && monthOk)) {
+            if (v.sailConsMFO != null) sailConsMFO += v.sailConsMFO;
+            if (v.sailConsMDO != null) sailConsMDO += v.sailConsMDO;
+          }
+        }
+      }
 
-  const totals = visible.reduce((acc, r) => ({
-    sailDays: acc.sailDays + r.sailDays,
-    dtDays:   acc.dtDays + r.dtDays,
-    anchDays: acc.anchDays + r.anchDays,
-    portDays: acc.portDays + r.portDays,
-    miles: acc.miles + r.miles,
-  }), { sailDays:0, dtDays:0, anchDays:0, portDays:0, miles:0 });
-
-  const resetFilters = () => { setFYear(""); setFMonth(""); };
-  const activeCount = [fYear, fMonth].filter(x=>x!=="").length;
-
-  const buildAllRows = () => {
-    const vesselHeader = [
-      "No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
-      "ME.pelaporanSebelum","AE at Sea.pelaporanSebelum","AE at Port.pelaporanSebelum",
-      "ME.pelaporanSekarang","AE at Sea.pelaporanSekarang","AE at Port.pelaporanSekarang",
-      "Avg/Miles","Avg/Hari","Target ME/Day","Realisasi Pemakaian",
-      "AVE Speed.pelaporanSebelum","AVE Speed.pelaporanSekarang"
-    ];
-
-    const vesselRows = visible.map(r => [
-      r.no,
-      r.ship,
-      r.sailDays.toFixed(2),
-      r.anchDays.toFixed(2),
-      r.atPortDays != null ? r.atPortDays.toFixed(2) : "",
-      r.dtDays.toFixed(2),
-      r.totalHari > 0 ? r.totalHari.toFixed(0) : "",
-      r.miles,
-      r.mePrev != null ? r.mePrev : "",
-      "",
-      "",
-      r.meCur != null ? r.meCur : "",
-      "",
-      "",
-      r.avgMiles || "",
-      r.avgHari || "",
-      r.targetMeDay || "",
-      typeof r.realisasi === 'string' ? parseFloat(r.realisasi)/100 : "",
-      r.aveSpdPrev != null ? r.aveSpdPrev : "",
-      r.aveSpdCur != null ? r.aveSpdCur : "",
-    ]);
-
-    const anchorageRows = (anchorageDetailRows || []).map(row => {
-      const d = new Date(row.t0);
-      return {
-        ship: row.ship,
-        month: MONTHS[d.getMonth()],
-        year: d.getFullYear(),
-        t0: fmtDateForCSV(row.t0),
-        t1: fmtDateForCSV(row.t1),
-        hours: (row.hours/24).toFixed(2),
-      };
+      // Fuel: Cons In Port — kept as whole-voyage allocation (based on departure month)
+      const fuelRefDate = v.bosv || v.dep?.ts || v.list[0]?.ts;
+      const fuelOk = (() => {
+        if (!fYear && !fMonth) return true;
+        if (!fuelRefDate) return false;
+        const d = new Date(fuelRefDate);
+        return (!fYear || d.getFullYear()===Number(fYear)) && (!fMonth || d.getMonth()===Number(fMonth));
+      })();
+      if (fuelOk) {
+        if (v.fuelArrSBE && (v.fuelArrSBE.mfo != null || v.fuelArrSBE.mdo != null)) {
+          const allShipVoys = voys.filter(x=>x.ship===v.ship)
+            .sort((a,b)=>new Date(a.dep?.ts||a.list[0]?.ts||0)-new Date(b.dep?.ts||b.list[0]?.ts||0));
+          const mi = allShipVoys.findIndex(x=>x.no===v.no);
+          const nv = allShipVoys[mi+1];
+          const nFAW = nv?.fuelDepFWE;
+          if (nFAW) {
+            if (v.fuelArrSBE.mfo!=null && nFAW.mfo!=null)
+              portConsMFO += Math.max(0,(v.fuelArrSBE.mfo+(nv.receivedMFO||0))-nFAW.mfo);
+            if (v.fuelArrSBE.mdo!=null && nFAW.mdo!=null)
+              portConsMDO += Math.max(0,(v.fuelArrSBE.mdo+(nv.receivedMDO||0))-nFAW.mdo);
+          }
+        }
+      }
     });
 
-    const berthingRows = (berthingDetailRows || []).map(row => {
-      const d = new Date(row.t0);
-      return {
-        ship: row.ship,
-        month: MONTHS[d.getMonth()],
-        year: d.getFullYear(),
-        t0: fmtDateForCSV(row.t0),
-        t1: fmtDateForCSV(row.t1),
-        hours: (row.hours/24).toFixed(2),
-      };
-    });
+    return {
+      MONTHS, years, shipFiltered,
+      totalSailH: sailBucket.reduce((s,h)=>s+h,0),
+      totalDtH:   dtBucket.reduce((s,h)=>s+h,0),
+      totalInPortH: portBucket.reduce((s,h)=>s+h,0),
+      totalAnchorH: ancBucket.reduce((s,h)=>s+h,0),
+      matchedVoyageCount,
+      sailConsMFO, sailConsMDO, portConsMFO, portConsMDO,
+    };
+  })({ fShip, fYear, fMonth, voys, reports });
 
-    const downtimeRows = matchedEntries.map(e => [
-      e.ship,
-      fmtDateForCSV(e.t0),
-      fmtDateForCSV(e.t1),
-      (e.durationH/24).toFixed(2),
-      e.reason,
-      e.category,
-    ]);
+  const { MONTHS, years, shipFiltered, totalSailH, totalDtH, totalInPortH, totalAnchorH,
+          matchedVoyageCount, sailConsMFO, sailConsMDO, portConsMFO, portConsMDO } = computed;
+  const totalSailDays = totalSailH / 24;
 
-    return { vesselHeader, vesselRows, anchorageRows, berthingRows, downtimeRows };
-  };
-
-  const handleDownloadAllXLSX = () => {
-    const { vesselHeader, vesselRows, anchorageRows, berthingRows, downtimeRows } = buildAllRows();
-
-    const y = fYear || "";
-    const m = fMonth !== "" ? MONTHS[Number(fMonth)] : "";
-    const prefix = ["report", y, m].filter(Boolean).join("_");
-    const filename = `${prefix || "all_report"}.xlsx`;
-
-    downloadAllReportXLSX({ vesselHeader, vesselRows, anchorageRows, berthingRows, downtimeRows, filename });
-  };
-  const headerYear = fYear || (new Date().getFullYear());
-  const headerMonth = fMonth !== "" ? MONTHS[Number(fMonth)] : "";
+  const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
+  const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 
   return (
     <div>
-      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Report</div>
+      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Ringkasan Voyage</div>
 
       <div style={{ display:"flex", gap:10, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
+        {!user?.ship && (
+          <select style={{ ...ss.sel, width:"auto", minWidth:160 }} value={fShip} onChange={e=>setFShip(e.target.value)}>
+            <option value="">Semua Kapal</option>
+            {SHIPS.map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
         <select style={{ ...ss.sel, width:"auto", minWidth:120 }} value={fYear} onChange={e=>setFYear(e.target.value)}>
           <option value="">Semua Tahun</option>
           {years.map(y=><option key={y} value={y}>{y}</option>)}
@@ -2435,98 +2209,71 @@ function VesselReport({ reports, voys, user, runningHours, consMe }) {
         {activeCount > 0 && (
           <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>
         )}
-        <button
-          style={{ ...ss.btn, fontSize:11, padding:"5px 12px", marginLeft:"auto" }}
-          onClick={() => {
-            const parts = ["vessel-report"];
-            if (fYear) parts.push(fYear);
-            if (fMonth !== "") parts.push(MONTHS[Number(fMonth)]);
-            downloadVesselReportCSV(visible, parts.join("_") + ".csv");
-          }}
-        >⬇️ Download Vessel Report</button>
-        <button
-          style={{ ...ss.btn, fontSize:11, padding:"5px 12px", marginLeft:"auto" }}
-          onClick={handleDownloadAllXLSX}
-        >⬇️ Download All Report (.xlsx)</button>
+        <div style={{ fontSize:11, color:C.muted, marginLeft:"auto" }}>{matchedVoyageCount} voyage</div>
       </div>
 
-      {/* Year/Month header like Excel */}
-      <div style={{ marginBottom:4 }}>
-        <div style={{ fontSize:16, fontWeight:700, color:C.text }}>{headerYear}</div>
-        <div style={{ fontSize:14, fontWeight:600, color:C.accent }}>{headerMonth}</div>
-        <div style={{ fontSize:11, fontWeight:700, color:C.text, marginTop:2 }}>VESSEL ACTIVITY</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
+        <div style={{ background:C.bg3, border:`1px solid ${C.green}30`, borderTop:`3px solid ${C.green}`, borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ fontSize:22, fontWeight:700, color:C.green, marginBottom:4 }}>{totalSailDays.toFixed(2)} hari</div>
+          <div style={{ fontSize:10, color:C.muted }}>Total Sailing (BOSV→EOSV) / {fmtH(totalSailH)}</div>
+        </div>
+        <div style={{ background:C.bg3, border:`1px solid ${C.red}30`, borderTop:`3px solid ${C.red}`, borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ fontSize:22, fontWeight:700, color:C.red, marginBottom:4 }}>{(totalDtH/24).toFixed(2)} hari</div>
+          <div style={{ fontSize:10, color:C.muted }}>Total Downtime (incl. Shelter)</div>
+        </div>
+        <div style={{ background:C.bg3, border:`1px solid ${C.horizon}30`, borderTop:`3px solid ${C.horizon}`, borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ fontSize:22, fontWeight:700, color:C.horizon, marginBottom:4 }}>{(totalInPortH/24).toFixed(2)} hari</div>
+          <div style={{ fontSize:10, color:C.muted }}>Total In Port (EOSV→next BOSV)</div>
+        </div>
+        <div style={{ background:C.bg3, border:`1px solid ${C.amber}30`, borderTop:`3px solid ${C.amber}`, borderRadius:12, padding:"14px 16px" }}>
+          <div style={{ fontSize:22, fontWeight:700, color:C.amber, marginBottom:4 }}>{(totalAnchorH/24).toFixed(2)} hari</div>
+          <div style={{ fontSize:10, color:C.muted }}>Total Anchorage (Drop→Anch Up)</div>
+        </div>
       </div>
 
-      <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:22, background:C.surface }}>
-        <table style={{ ...ss.tbl, minWidth:1100 }}>
-          <thead>
-            <tr>
-              {(() => {
-                const la = fMonth !== "" ? `ME (${prevMonthLabel})` : "ME (1)";
-                const lb = fMonth !== "" ? `AE at Sea (${prevMonthLabel})` : "AE at Sea (1)";
-                const lc = fMonth !== "" ? `AE at Port (${prevMonthLabel})` : "AE at Port (1)";
-                const ld = fMonth !== "" ? `ME (${curLabel})` : "ME (2)";
-                const le = fMonth !== "" ? `AE at Sea (${curLabel})` : "AE at Sea (2)";
-                const lf = fMonth !== "" ? `AE at Port (${curLabel})` : "AE at Port (2)";
-                const lg = fMonth !== "" ? `AVE Speed (${prevMonthLabel})` : "AVE Speed (1)";
-                const lh = fMonth !== "" ? `AVE Speed (${curLabel})` : "AVE Speed (2)";
-                return ["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total Hari","Total Miles",
-                  la, lb, lc, ld, le, lf,
-                  "Avg/Miles","Avg/Hari","Target ME /Day","Realisasi Pemakaian",
-                  lg, lh
-                ].map(h =>
-                  <th key={h} style={{ ...ss.th, whiteSpace:"nowrap", minWidth: h==="Nama Kapal"?150:85 }}>{h}</th>
-                );
-              })()}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.length === 0 && (
-              <tr><td colSpan={19} style={{ ...ss.td(false), textAlign:"center", color:C.muted, padding:28 }}>Tidak ada data</td></tr>
-            )}
-            {visible.map((r, i) => (
-              <tr key={r.ship}>
-                <td style={{ ...ss.td(i%2), color:C.accent, fontWeight:700 }}>{r.no}</td>
-                <td style={{ ...ss.td(i%2), fontWeight:600, whiteSpace:"nowrap" }}>{r.ship}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.sailDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.anchDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.atPortDays != null ? r.atPortDays.toFixed(2) : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.dtDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.totalHari > 0 ? r.totalHari.toFixed(0) : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2), fontWeight:700 }}>{r.miles.toLocaleString()}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.mePrev != null ? r.mePrev.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}></td>
-                <td style={{ ...ss.td(i%2) }}></td>
-                <td style={{ ...ss.td(i%2) }}>{r.meCur != null ? r.meCur.toLocaleString() : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}></td>
-                <td style={{ ...ss.td(i%2) }}></td>
-                <td style={{ ...ss.td(i%2) }}>{r.avgMiles || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.avgHari || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.targetMeDay || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{typeof r.realisasi === 'string' ? r.realisasi : <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aveSpdPrev || <span style={{color:C.muted}}>—</span>}</td>
-                <td style={{ ...ss.td(i%2) }}>{r.aveSpdCur || <span style={{color:C.muted}}>—</span>}</td>
-              </tr>
-            ))}
-            {visible.length > 0 && (
-              <tr>
-                <td colSpan={2} style={{ ...ss.td(true), fontWeight:700, color:C.accent }}>TOTAL / Rata-rata</td>
-                <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.sailDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.anchDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.portDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.dtDays.toFixed(2)}</td>
-                <td style={{ ...ss.td(true), fontWeight:700 }}>{daysInMonth > 0 ? daysInMonth.toFixed(0) : "—"}</td>
-                <td style={{ ...ss.td(true), fontWeight:700 }}>{totals.miles.toLocaleString()}</td>
-                <td colSpan={12} style={{ ...ss.td(true), color:C.muted }}>—</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div style={{ marginTop:12 }}>
+        <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Fuel Consumption (KL/MT)</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
+          {/* Sailing Cons */}
+          <div style={{ background:C.bg3, border:`1px solid ${C.green}30`, borderTop:`3px solid ${C.green}`, borderRadius:12, padding:"14px 16px" }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.green, marginBottom:8 }}>⛽ Cons Sailing</div>
+            <div style={{ fontSize:11, color:C.muted, marginBottom:4 }}>Dep FWE → Arr SBE/EOSV</div>
+            <div style={{ display:"flex", gap:16, marginTop:6 }}>
+              <div>
+                <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>MFO</div>
+                <div style={{ fontSize:20, fontWeight:700, color:C.text }}>{sailConsMFO != null && sailConsMFO > 0 ? sailConsMFO.toFixed(3) : sailConsMFO === 0 ? "0.000" : "—"}</div>
+              </div>
+              <div style={{ width:1, background:C.border }}/>
+              <div>
+                <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>MDO</div>
+                <div style={{ fontSize:20, fontWeight:700, color:C.text }}>{sailConsMDO != null && sailConsMDO > 0 ? sailConsMDO.toFixed(3) : sailConsMDO === 0 ? "0.000" : "—"}</div>
+              </div>
+            </div>
+          </div>
+          {/* In Port Cons */}
+          <div style={{ background:C.bg3, border:`1px solid ${C.horizon}30`, borderTop:`3px solid ${C.horizon}`, borderRadius:12, padding:"14px 16px" }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.horizon, marginBottom:8 }}>⛽ Cons In Port</div>
+            <div style={{ fontSize:11, color:C.muted, marginBottom:4 }}>(Arr SBE + Recv Bunker) − next Dep FWE</div>
+            <div style={{ display:"flex", gap:16, marginTop:6 }}>
+              <div>
+                <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>MFO</div>
+                <div style={{ fontSize:20, fontWeight:700, color:C.text }}>{portConsMFO > 0 ? portConsMFO.toFixed(3) : portConsMFO === 0 ? "0.000" : "—"}</div>
+              </div>
+              <div style={{ width:1, background:C.border }}/>
+              <div>
+                <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>MDO</div>
+                <div style={{ fontSize:20, fontWeight:700, color:C.text }}>{portConsMDO > 0 ? portConsMDO.toFixed(3) : portConsMDO === 0 ? "0.000" : "—"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
-        * Sailing = BOSV→EOSV per bulan. Anchorage = arr_anchor SBE/EOSV → shift_berth FWE. At Port = shift_berth/arr_berth FWE → next BOSV. Downtime = laporan downtime + shelter. Total Hari = jumlah hari kalender bulan terpilih. Average Speed = konsisten Management Report. Avg/Miles = Cons ME cur / Miles. Target ME/Day = parameter ME/hari * 24.
-      </div>
+      {(fYear || fMonth) && (
+        <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
+          * Time dihitung proporsional per bulan. Fuel cons dihitung per voyage berdasarkan bulan BOSV.
+        </div>
+      )}
     </div>
   );
 }
@@ -2653,9 +2400,12 @@ function getAnchorageTimeEntries(reports) {
     if (!t0) return;
 
     const shiftBerth = (v.list||[]).find(r => r.type === "shift_berth");
+    // If shift_berth with FWE exists, anchorage has ended at that point.
+    // Otherwise the vessel is STILL at anchorage — use "now" as the open end,
+    // so month-by-month splitting still counts the ongoing duration correctly.
     const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
 
-    entries.push({ ship: v.ship, voy: v.no, t0, t1, hours: diffH(t0, t1) });
+    entries.push({ ship: v.ship, voy: v.no, t0, t1 });
   });
   return entries;
 }
@@ -2677,9 +2427,13 @@ function getBerthingTimeEntries(reports) {
       if (!t0) return;
 
       const nextV = shipVoys[idx+1];
+      // If the next voyage's BOSV exists, berthing ended there.
+      // Otherwise the vessel is STILL at berth (next voyage hasn't departed
+      // yet, or doesn't exist) — use "now" as the open end so ongoing
+      // berthing time still counts correctly when split by month.
       const t1 = nextV?.bosv || new Date().toISOString();
 
-      entries.push({ ship: v.ship, voy: v.no, t0, t1, hours: diffH(t0, t1) });
+      entries.push({ ship: v.ship, voy: v.no, t0, t1 });
     });
   });
   return entries;
@@ -2767,6 +2521,8 @@ function downloadCSV(headers, rows, rowMapper, filename) {
 }
 
 function downloadCSVRaw(csvContent, filename) {
+  // "sep=;" tells Excel Desktop to use semicolon as the delimiter.
+  // BOM (\uFEFF) ensures UTF-8 encoding is detected correctly on Windows.
   const BOM = "\uFEFF";
   const SEP = "sep=;\n";
   const blob = new Blob([BOM + SEP + csvContent], { type: "text/csv;charset=utf-8;" });
@@ -2778,40 +2534,6 @@ function downloadCSVRaw(csvContent, filename) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-function downloadAllReportXLSX({ vesselRows, vesselHeader, anchorageRows, berthingRows, downtimeRows, filename = "all_report.xlsx" }) {
-  if (typeof XLSX === "undefined") {
-    alert("Library XLSX belum dimuat.");
-    return;
-  }
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet([
-    vesselHeader,
-    ...(vesselRows || []),
-  ]);
-  XLSX.utils.book_append_sheet(wb, ws1, "Vessel Report");
-
-  const ws2 = XLSX.utils.aoa_to_sheet([
-    "Nama Kapal;Bulan;Tahun;Anchorage (EOSV Arrival);Berthing (FWE Shifting to berth);Anchorage Time (hari)",
-    ...(anchorageRows || []).map(r => [r.ship, r.month, r.year, r.t0, r.t1, r.hours]),
-  ]);
-  XLSX.utils.book_append_sheet(wb, ws2, "Anchorage Time");
-
-  const ws3 = XLSX.utils.aoa_to_sheet([
-    "Nama Kapal;Bulan;Tahun;Berthing (FWE shift to berth/arr berth);Departure (BOSV departure next voyage);Berthing Time (hari)",
-    ...(berthingRows || []).map(r => [r.ship, r.month, r.year, r.t0, r.t1, r.hours]),
-  ]);
-  XLSX.utils.book_append_sheet(wb, ws3, "Berthing Time");
-
-  const ws4 = XLSX.utils.aoa_to_sheet([
-    ["Vessel", "Start Downtime", "Finish Downtime", "Duration (days)", "Reason", "Category"],
-    ...(downtimeRows || []).map(r => [r.ship, r.t0, r.t1, r.durationH, r.reason, r.category]),
-  ]);
-  XLSX.utils.book_append_sheet(wb, ws4, "Downtime");
-
-  XLSX.writeFile(wb, filename);
 }
 
 function RunningHoursInput({ rhKey, current, onSave }) {
@@ -2844,7 +2566,7 @@ function RunningHoursInput({ rhKey, current, onSave }) {
 }
 
 // --- RH & CONSUMPTION PAGE -----------------------------------------------------
-function RHConsPage({ runningHours, setRunningHours, consMe, setConsMe, user }) {
+function RHConsPage({ runningHours, setRunningHours, user }) {
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
   const [rhShip, setRhShip] = useState(user?.ship || SHIPS[0]);
   const [rhYear, setRhYear] = useState(new Date().getFullYear());
@@ -2859,6 +2581,7 @@ function RHConsPage({ runningHours, setRunningHours, consMe, setConsMe, user }) 
   const [showRhForm, setShowRhForm] = useState(false);
 
   // Cons ME state
+  const [consMe, setConsMe] = useState({});
   const [consMeShip, setConsMeShip] = useState(user?.ship || SHIPS[0]);
   const [consMeYear, setConsMeYear] = useState(new Date().getFullYear());
   const [consMeMonth, setConsMeMonth] = useState(new Date().getMonth());
@@ -3404,143 +3127,78 @@ function ManagementReport({ reports, runningHours, user }) {
   const [showAvgSpeedDetail, setShowAvgSpeedDetail] = useState(false);
 
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-  const shipFilter = fShip;
-  const activeCount = [fShip, fYear, fMonth].filter(Boolean).length;
   const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
 
+  const allEntries = getAllDowntimeEntries(reports);
+  const filteredEntries = allEntries.filter(e => !fShip || e.ship === fShip);
+
+  let totalDtH = 0;
+  const matchedEntries = [];
+
+  filteredEntries.forEach(e => {
+    const segs = splitByMonth(e.t0, e.t1);
+    let matchedHours = 0;
+    segs.forEach(seg => {
+      const yearOk  = !fYear  || seg.year === Number(fYear);
+      const monthOk = !fMonth || seg.month === Number(fMonth);
+      if (yearOk && monthOk) matchedHours += seg.hours;
+    });
+    if (matchedHours > 0 || (!fYear && !fMonth)) {
+      totalDtH += (!fYear && !fMonth) ? e.durationH : matchedHours;
+      matchedEntries.push(e);
+    }
+  });
+
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
+  const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 
   const handleExport = () => {
-    const rows = matchedEntries.map((e, i) => {
-      const d0 = new Date(e.t0);
-      return [
-        e.ship,
-        MONTHS[d0.getMonth()],
-        d0.getFullYear(),
-        fmtDateForCSV(e.t0),
-        fmtDateForCSV(e.t1),
-        (e.durationH/24).toFixed(2),
-        e.reason,
-        e.category,
-      ];
-    });
-    const parts = ["downtime"];
-    if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
-    if (fYear) parts.push(fYear);
-    if (fMonth) parts.push(MONTHS[Number(fMonth)]);
-    downloadCSV(
-      ["Vessel","Bulan","Tahun","Start Downtime","Finish Downtime","Duration (days)","Reason","Category"],
-      matchedEntries,
-      (e, i) => [e.ship, MONTHS[new Date(e.t0).getMonth()], new Date(e.t0).getFullYear(), fmtDateForCSV(e.t0), fmtDateForCSV(e.t1), (e.durationH/24).toFixed(2), e.reason, e.category],
-      parts.join("_") + ".csv"
-    );
+    const filenameParts = ["downtime-report"];
+    if (fShip) filenameParts.push(fShip.replace(/\s+/g,"_"));
+    if (fYear) filenameParts.push(fYear);
+    if (fMonth) filenameParts.push(MONTHS[Number(fMonth)]);
+    downloadDowntimeCSV(matchedEntries, filenameParts.join("_") + ".csv");
   };
 
-  const daysInMonth = (() => {
-    if (fYear === "" || fMonth === "") return 0;
-    return new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();
-  })();
-
-  const voys = computeVoyages(reports);
-  const allDt = getAllDowntimeEntries(reports);
-  const allAnc = getAnchorageTimeEntries(reports);
-  const allBerth = getBerthingTimeEntries(reports);
-
-  const matchedEntries = (allDt || []).filter(e => {
-    const d0 = new Date(e.t0);
-    const yOk = !fYear || d0.getFullYear() === Number(fYear);
-    const mOk = !fMonth || d0.getMonth() === Number(fMonth);
-    const sOk = !fShip || e.ship === fShip;
-    return yOk && mOk && sOk;
-  });
-
-  const anchorageDetailRows = (allAnc || []).filter(e => {
-    const d0 = new Date(e.t0);
-    const yOk = !fYear || d0.getFullYear() === Number(fYear);
-    const mOk = !fMonth || d0.getMonth() === Number(fMonth);
-    const sOk = !fShip || e.ship === fShip;
-    return yOk && mOk && sOk;
-  });
-
-  const berthingDetailRows = (allBerth || []).filter(e => {
-    const d0 = new Date(e.t0);
-    const yOk = !fYear || d0.getFullYear() === Number(fYear);
-    const mOk = !fMonth || d0.getMonth() === Number(fMonth);
-    const sOk = !fShip || e.ship === fShip;
-    return yOk && mOk && sOk;
-  });
-
-  function monthFilteredVoySegs(entries, ship) {
-    const out = [];
-    (entries || []).forEach(e => {
-      if (e.ship !== ship) return;
-      const segs = splitByMonth(e.t0, e.t1);
-      segs.forEach(seg => {
-        const yOk = !fYear || seg.year === Number(fYear);
-        const mOk = !fMonth || seg.month === Number(fMonth);
-        if (yOk && mOk) out.push(seg.hours);
-      });
-    });
-    return out;
-  }
-
-  // Use same single source of truth as VesselReport
-  const shipRows = SHIPS.map(ship => {
-    const shipVoys = (voys||[]).filter(v => v.ship === ship || !ship);
-    const sailSegs = [];
-    let miles = 0;
-    shipVoys.forEach(v => {
-      if (v.bosv && v.eosv) {
-        const segs = splitByMonth(v.bosv, v.eosv);
-        segs.forEach(seg => {
-          const yOk = !fYear || seg.year === Number(fYear);
-          const mOk = !fMonth || seg.month === Number(fMonth);
-          if (yOk && mOk) sailSegs.push(seg.hours);
+  // --- Anchorage Time (arr_anchor SBE/EOSV -> shift_berth FWE) ---
+  const anchorageEntries = getAnchorageTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
+  let totalAnchorageH = 0;
+  const anchorageDetailRows = [];
+  anchorageEntries.forEach(e => {
+    const segs = splitByMonth(e.t0, e.t1);
+    segs.forEach(seg => {
+      const yearOk  = !fYear  || seg.year === Number(fYear);
+      const monthOk = !fMonth || seg.month === Number(fMonth);
+      if (yearOk && monthOk) {
+        totalAnchorageH += seg.hours;
+        anchorageDetailRows.push({
+          ship: e.ship, voy: e.voy,
+          t0: seg.start, t1: seg.end,
+          hours: seg.hours,
         });
       }
-      const shipMiles = (v.list || [])
-        .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ttl_dist)
-        .reduce((s, r) => s + (parseFloat(r.ttl_dist) || 0), 0);
-      if (shipMiles > 0) {
-        const eosv = v.eosv || (v.arr && (v.arr[evKey("SBE/EOSV")] || v.arr.ts)) || v.bosv || v.dep?.ts || v.list[0]?.ts;
-        const bosv = v.bosv || (v.dep && (v.dep[evKey("BOSV")] || v.dep.ts)) || v.list[0]?.ts;
-        if (bosv && eosv) {
-          const totalH = diffH(bosv, eosv);
-          if (totalH > 0) {
-            const segs = splitByMonth(bosv, eosv);
-            segs.forEach(seg => {
-              const yOk = !fYear || seg.year === Number(fYear);
-              const mOk = !fMonth || seg.month === Number(fMonth);
-              if (yOk && mOk) miles += shipMiles * (seg.hours / totalH);
-            });
-          } else if (!fYear && !fMonth) {
-            miles += shipMiles;
-          }
-        } else if (!fYear && !fMonth) {
-          miles += shipMiles;
-        }
-      }
     });
-    const sailH = sailSegs.reduce((s,h)=>s+h,0);
-    const dtH = monthFilteredVoySegs(allDt, ship).reduce((s,h)=>s+h,0);
-    const ancH = monthFilteredVoySegs(allAnc, ship).reduce((s,h)=>s+h,0);
-    const berthH = monthFilteredVoySegs(allBerth, ship).reduce((s,h)=>s+h,0);
-
-    return {
-      ship,
-      sailDays: Math.max(0, daysInMonth - dtH/24 - ancH/24 - berthH/24) || (daysInMonth === 0 ? sailH/24 : 0),
-      anchDays: ancH/24,
-      portDays: berthH/24,
-      dtDays: dtH/24,
-      miles: Math.round(miles),
-    };
   });
 
-  const totalDtH   = shipRows.reduce((s,r)=>s+(r.dtDays*24), 0);
-  const totalAnch  = shipRows.filter(r => !fShip || r.ship === fShip).reduce((acc,r)=>acc+r.anchDays,0);
-  const totalAnchH = totalAnch*24;
-  const totalBerth = shipRows.filter(r => !fShip || r.ship === fShip).reduce((acc,r)=>acc+r.portDays,0);
-  const totalBerthH = totalBerth*24;
+  // --- Berthing Time (shift_berth/arr_berth FWE -> next voyage BOSV, same ship) ---
+  const berthingEntries = getBerthingTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
+  let totalBerthingH = 0;
+  const berthingDetailRows = [];
+  berthingEntries.forEach(e => {
+    const segs = splitByMonth(e.t0, e.t1);
+    segs.forEach(seg => {
+      const yearOk  = !fYear  || seg.year === Number(fYear);
+      const monthOk = !fMonth || seg.month === Number(fMonth);
+      if (yearOk && monthOk) {
+        totalBerthingH += seg.hours;
+        berthingDetailRows.push({
+          ship: e.ship, voy: e.voy,
+          t0: seg.start, t1: seg.end,
+          hours: seg.hours,
+        });
+      }
+    });
+  });
 
   // --- Total Distance ---
   // For each Arrival report (arr_berth/arr_anchor):
@@ -3849,14 +3507,13 @@ function ManagementReport({ reports, runningHours, user }) {
   let atPortDays = null;
   if (fYear && fMonth !== "" && effectiveShip) {
     const daysInMonth = new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();
-    const berthingDays   = totalBerthH / 24;
-    const anchorageDays  = totalAnchH / 24;
+    const berthingDays   = totalBerthingH / 24;
+    const anchorageDays  = totalAnchorageH / 24;
     const downtimeDays   = totalDtH / 24;
     const rhKey = `${effectiveShip}|${fYear}|${fMonth}`;
-    const rhMe = parseFloat(runningHours?.[rhKey]?.me) || 0;
+    const rhMe = parseFloat(runningHours[rhKey]?.me) || 0;
 
     atPortDays = berthingDays - ((rhMe / 24) - (daysInMonth - downtimeDays - berthingDays - anchorageDays));
-    atPortDays = Number.isFinite(atPortDays) ? Math.max(0, atPortDays) : null;
   }
 
   return (
@@ -3901,18 +3558,9 @@ function ManagementReport({ reports, runningHours, user }) {
         <div>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
             <div style={{ fontSize:12, fontWeight:700, color:C.accent }}>Detail Downtime</div>
-            {matchedEntries.length > 0 && (
-              <button
-                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
-                onClick={() => {
-                  const parts = ["downtime"];
-                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
-                  if (fYear) parts.push(fYear);
-                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
-                  downloadDowntimeCSV(matchedEntries, parts.join("_") + ".csv");
-                }}
-              >⬇️ Download CSV</button>
-            )}
+            <button style={{ ...ss.btn, fontSize:11, padding:"6px 14px" }} onClick={handleExport}>
+              ⬇️ Download CSV
+            </button>
           </div>
           <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto" }}>
             <table className="voyage-main-table" style={{ ...ss.tbl, minWidth:640 }}>
@@ -3948,7 +3596,7 @@ function ManagementReport({ reports, runningHours, user }) {
           style={{ background:C.bg3, border:`1px solid ${C.amber}30`, borderTop:`3px solid ${C.amber}`, borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
           onClick={() => setShowAnchorageDetail(s => !s)}
         >
-          <div style={{ fontSize:22, fontWeight:700, color:C.amber, marginBottom:4 }}>{(totalAnchH/24).toFixed(2)} hari</div>
+          <div style={{ fontSize:22, fontWeight:700, color:C.amber, marginBottom:4 }}>{(totalAnchorageH/24).toFixed(2)} hari</div>
           <div style={{ fontSize:10, color:C.muted }}>Anchorage Time</div>
           <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Arr.Anc SBE/EOSV → Shift Berth FWE {showAnchorageDetail ? "▲" : "▼"}</div>
         </div>
@@ -3956,7 +3604,7 @@ function ManagementReport({ reports, runningHours, user }) {
           style={{ background:C.bg3, border:`1px solid ${C.horizon}30`, borderTop:`3px solid ${C.horizon}`, borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
           onClick={() => setShowBerthingDetail(s => !s)}
         >
-          <div style={{ fontSize:22, fontWeight:700, color:C.horizon, marginBottom:4 }}>{(totalBerthH/24).toFixed(2)} hari</div>
+          <div style={{ fontSize:22, fontWeight:700, color:C.horizon, marginBottom:4 }}>{(totalBerthingH/24).toFixed(2)} hari</div>
           <div style={{ fontSize:10, color:C.muted }}>Berthing Time</div>
           <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Berth FWE → Next Voyage BOSV {showBerthingDetail ? "▲" : "▼"}</div>
         </div>
@@ -4137,7 +3785,6 @@ function ManagementReport({ reports, runningHours, user }) {
 
 // --- APP ----------------------------------------------------------------------
 export default function App() {
-  // force-rebuild: ManagementReport filter/export fixes must take effect in Vercel
   const isMobile = useIsMobile();
   // GlobalStyles renders unconditionally so CSS variables are defined
   // even on the Login screen (which returns early, before the main app shell).
@@ -4147,7 +3794,6 @@ export default function App() {
   const [viewing,  setViewing]  = useState(null);
   const [editing,  setEditing]  = useState(null);
   const [runningHours, setRunningHours] = useState({}); // key: "ship|year|month" -> {me, ae}
-  const [consMe, setConsMe] = useState({}); // key: "ship|year|month" -> {cons_me}
   const [theme, setTheme] = useState("light");
 
   // Check Supabase session on mount
@@ -4296,11 +3942,11 @@ export default function App() {
           </nav>
         )}
         <main style={{ ...ss.main, paddingBottom: isMobile ? 80 : 22 }}>
-          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user} runningHours={runningHours} consMe={consMe}/>}
+          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user}/>}
           {page==="new"       && <ReportForm onSave={addReport} onCancel={() => setPage("dashboard")} allReports={visibleReports} user={user}/>}
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
           {page==="log"       && <ReportLog reports={visibleReports} onView={setViewing} user={user}/>}
-          {page==="rh"        && <RHConsPage runningHours={runningHours} setRunningHours={setRunningHours} consMe={consMe} setConsMe={setConsMe} user={user}/>}
+          {page==="rh"        && <RHConsPage runningHours={runningHours} setRunningHours={setRunningHours} user={user}/>}
           {page==="mgmt"      && <ManagementReport reports={visibleReports} runningHours={runningHours} user={user}/>}
         </main>
       </div>

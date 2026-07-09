@@ -2054,21 +2054,20 @@ function Dashboard({ reports, onNew, user }) {
      </table>
       </div>
 
-      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Activity</div>
+            <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Activity</div>
       <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:22 }}>
         <table style={{ ...ss.tbl, minWidth:1200, tableLayout:"auto" }}>
           <thead>
             <tr>
               <th style={ss.th} rowSpan={2}>NO</th>
               <th style={ss.th} rowSpan={2}>NAMA KAPAL</th>
-              <th style={ss.th} colSpan={4}>HARI</th>
+              <th style={ss.th} colSpan={3}>HARI</th>
               <th style={ss.th} rowSpan={2}>LAUT (NM)</th>
               <th style={ss.th} colSpan={2}>ME (MAIN ENGINE) - AE AT SEA</th>
               <th style={ss.th} colSpan={3}>KONSUMSI BBM (LITRE)</th>
-              <th style={ss.th} rowSpan={2}>AVG/F (JUNE)</th>
+              <th style={ss.th} colSpan={2}>AVG/F (JUNE)</th>
             </tr>
             <tr>
-              <th style={ss.th}>SAILING (HARI)</th>
               <th style={ss.th}>ANCHORAGE (HARI)</th>
               <th style={ss.th}>AT PORT (HARI)</th>
               <th style={ss.th}>DOWNTIME (HARI)</th>
@@ -2097,10 +2096,6 @@ function Dashboard({ reports, onNew, user }) {
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>
                 <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
               </tr>
             ))}
           </tbody>
@@ -2109,70 +2104,6 @@ function Dashboard({ reports, onNew, user }) {
     </div>
   );
 }
-
-function ReportLog({ reports, onView, user }) {
-  const [fShip, setFShip] = useState("");
-  const [fYear, setFYear] = useState("");
-  const [fType, setFType] = useState("");
-
-  const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
-
-  const sorted = [...reports]
-    .filter(r => !fShip || r.ship === fShip)
-    .filter(r => !fYear || new Date(r.ts).getFullYear() === Number(fYear))
-    .filter(r => !fType || r.type === fType)
-    .sort((a,b) => new Date(b.ts)-new Date(a.ts));
-
-  const resetFilters = () => { setFShip(""); setFYear(""); setFType(""); };
-  const activeCount = [fShip, fYear, fType].filter(Boolean).length;
-
-  return (
-    <div>
-      <div style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>Semua Laporan</div>
-      <div style={{ fontSize:11, color:C.muted, marginBottom:14 }}>Riwayat seluruh laporan kapal</div>
-
-      <div style={{ display:"flex", gap:10, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
-        {!user?.ship && (
-          <select style={{ ...ss.sel, width:"auto", minWidth:160 }} value={fShip} onChange={e=>setFShip(e.target.value)}>
-            <option value="">Semua Kapal</option>
-            {SHIPS.map(s=><option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
-        <select style={{ ...ss.sel, width:"auto", minWidth:120 }} value={fYear} onChange={e=>setFYear(e.target.value)}>
-          <option value="">Semua Tahun</option>
-          {years.map(y=><option key={y} value={y}>{y}</option>)}
-        </select>
-        <select style={{ ...ss.sel, width:"auto", minWidth:180 }} value={fType} onChange={e=>setFType(e.target.value)}>
-          <option value="">Semua Jenis Laporan</option>
-          {RT.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}
-        </select>
-        {activeCount > 0 && (
-          <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>
-        )}
-        <div style={{ fontSize:11, color:C.muted, marginLeft:"auto" }}>{sorted.length} laporan</div>
-      </div>
-
-      <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto" }}>
-        <table className="voyage-main-table" style={{ ...ss.tbl, minWidth:560 }}>
-          <thead><tr>{["Waktu","Kapal","Voyage","Tipe","Port","Master",""].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
-          <tbody>
-            {sorted.length===0 && <tr><td colSpan={7} style={{ ...ss.td(false), textAlign:"center", color:C.muted, padding:28 }}>Tidak ada laporan</td></tr>}
-            {sorted.map((r,i) => {
-              const rt = RT.find(t=>t.id===r.type);
-              return (
-                <tr key={r.id}>
-                  <td style={ss.td(i%2)}>{fmtDT(r.ts)}</td>
-                  <td style={{ ...ss.td(i%2), fontWeight:600 }}>MV {r.ship}</td>
-                  <td style={{ ...ss.td(i%2), color:C.accent }}>{r.voy}</td>
-                  <td style={ss.td(i%2)}>{rt?.label||r.type}</td>
-                  <td style={ss.td(i%2)}>{r.port||"-"}</td>
-                  <td style={ss.td(i%2)}>{r.master||"-"}</td>
-                  <td style={ss.td(i%2)}><button style={ss.btnSm(true)} onClick={()=>onView(r)}>Lihat</button></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
     </div>
   );

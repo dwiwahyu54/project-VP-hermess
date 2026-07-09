@@ -2279,7 +2279,8 @@ function VoyageSummary({ reports, voys, user }) {
             </tr>
           </tfoot>
         </table>
-      </div>      {viewing && <Modal report={viewing} onClose={() => setViewing(null)} onEdit={() => startEdit(viewing)} onDelete={deleteReport}/>}
+      </div>
+      {viewing && <Modal report={viewing} onClose={() => setViewing(null)} onEdit={() => startEdit(viewing)} onDelete={deleteReport}/>}
       {isMobile && (
         <nav style={ss.bottomNav}>
           {nav.map(n => (

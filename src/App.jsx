@@ -2061,9 +2061,12 @@ function Dashboard({ reports, onNew, user, runningHours }) {
 
 // === VOYAGE SUMMARY WITH FILTERS ================================================
 function VoyageSummary({ reports, voys, user, runningHours }) {
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  
   const [fShip, setFShip] = useState("");
-  const [fYear, setFYear] = useState("");
-  const [fMonth, setFMonth] = useState("");
+  const [fYear, setFYear] = useState(String(currentYear)); // Default tahun ini
+  const [fMonth, setFMonth] = useState(String(currentMonth)); // Default bulan ini
 
   const computed = (({ fShip, fYear, fMonth, voys, reports }) => {
     const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -2444,7 +2447,12 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
     AvgSpeedPrevByShip[ship] = count > 0 ? (sum / count).toFixed(2) : null;
   });
 
-  const resetFilters = () => { setFYear(""); setFMonth(""); };
+  const resetFilters = () => { 
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    setFYear(String(currentYear)); 
+    setFMonth(String(currentMonth)); 
+  };
   const activeCount = [fYear, fMonth].filter(x=>x!=="").length;
 
   return (

@@ -2177,11 +2177,13 @@ function VoyageSummary({ reports, voys, user }) {
       totalAnchorH: ancBucket.reduce((s,h)=>s+h,0),
       matchedVoyageCount,
       sailConsMFO, sailConsMDO, portConsMFO, portConsMDO,
+      closingBalance: portBucket.reduce((s,h)=>s+h,0),
     };
   })({ fShip, fYear, fMonth, voys, reports });
 
   const { MONTHS, years, shipFiltered, totalSailH, totalDtH, totalInPortH, totalAnchorH,
-          matchedVoyageCount, sailConsMFO, sailConsMDO, portConsMFO, portConsMDO } = computed;
+          matchedVoyageCount, sailConsMFO, sailConsMDO, portConsMFO, portConsMDO,
+          closingBalance } = computed;
   const totalSailDays = totalSailH / 24;
 
   const curLabel = fMonth !== "" ? MONTHS[fMonth] : MONTHS[new Date().getMonth()];
@@ -2223,45 +2225,64 @@ function VoyageSummary({ reports, voys, user }) {
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Nama Kapal</th>
               <th colSpan={5} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
               <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Konsumsi BBM (Litre)</th>
-              <th colSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance</th>
+              <th colSpan={4} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance + AVG Speed</th>
             </tr>
             <tr>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Anchorage (Hari)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>At Port (Hari)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Downtime (Hari)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Total (Hari)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Laut (NM)</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({prevLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({prevLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({prevLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({curLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({curLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({curLabel})</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {prevLabel}</th>
-              <th style={{ border:`1px solid ${C.border}`, ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Anchorage (Hari)</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>At Port (Hari)</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Downtime (Hari)</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Total (Hari)</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Laut (NM)</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({prevLabel})</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({prevLabel})</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({prevLabel})</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({curLabel})</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({curLabel})</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({curLabel})</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {prevLabel}</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
             </tr>
           </thead>
           <tbody>
             {SHIPS.map((ship, idx) => (
               <tr key={ship}>
-                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center", border:`1px solid ${C.border}` }}>{idx+1}</td>
-                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:`1px solid ${C.border}` }}>{ship}</td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
-                <td style={ss.td(idx%2)}></td>
+                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center", border:"1px solid rgba(40,110,170,0.5)" }}>{idx+1}</td>
+                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left", border:"1px solid rgba(40,110,170,0.5)" }}>{ship}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
+              <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
+              <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       {(fYear || fMonth) && (
@@ -2335,6 +2356,25 @@ function ReportLog({ reports, onView, user }) {
               );
             })}
           </tbody>
+          <tfoot>
+            <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
+              <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
+              <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -3144,8 +3184,8 @@ function ManagementReport({ reports, runningHours, user }) {
     }
   });
 
-  const curLabel = fMonth !== "" ? MONTHS[fMonth] : MONTHS[new Date().getMonth()];
-  const prevLabel = fMonth !== "" ? MONTHS[(Number(fMonth)+11)%12] : MONTHS[(new Date().getMonth()+11)%12];
+  const curLabel = fMonth !== "" ? MONTHS[fMonth] : "June";
+  const prevLabel = fMonth !== "" ? MONTHS[(Number(fMonth)+11)%12] : "Mei";
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
 

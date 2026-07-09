@@ -2089,9 +2089,30 @@ function Dashboard({ reports, onNew, user }) {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style={{ ...ss.td(false), textAlign:"center", color:C.muted, padding:28 }} colSpan={20}>Data akan ditampilkan di sini</td>
-            </tr>
+            {SHIPS.map((ship, idx) => (
+              <tr key={ship}>
+                <td style={ss.td(idx%2)}>{idx+1}</td>
+                <td style={{ ...ss.td(idx%2), fontWeight:600 }}>{ship}</td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

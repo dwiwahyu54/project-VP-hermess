@@ -2104,10 +2104,6 @@ function Dashboard({ reports, onNew, user }) {
     </div>
   );
 }
-      </div>
-    </div>
-  );
-}
 
 // --- MODAL --------------------------------------------------------------------
 function Modal({ report, onClose, onEdit, onDelete }) {

@@ -2352,7 +2352,6 @@ function VoyageSummary({ reports, voys, user }) {
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
             </tr>
           </tfoot>
         </table>

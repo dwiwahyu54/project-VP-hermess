@@ -2272,11 +2272,6 @@ function VoyageSummary({ reports, voys, user }) {
 }
 
 function ReportLog({ reports, onView, user }) {
-  const [fShip, setFShip] = useState("");    </div>
-  );
-}
-
-function ReportLog({ reports, onView, user }) {
   const [fShip, setFShip] = useState("");
   const [fYear, setFYear] = useState("");
   const [fType, setFType] = useState("");

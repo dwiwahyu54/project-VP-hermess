@@ -2189,89 +2189,91 @@ function VoyageSummary({ reports, voys, user }) {
 
   return (
     <div>
-      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Ringkasan Voyage</div>
-
-      <div style={{ display:"flex", gap:10, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
-        {!user?.ship && (
-          <select style={{ ...ss.sel, width:"auto", minWidth:160 }} value={fShip} onChange={e=>setFShip(e.target.value)}>
-            <option value="">Semua Kapal</option>
-            {SHIPS.map(s=><option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
+      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Activity</div>
+      <div style={{ display:"flex", gap:10, marginBottom:12, flexWrap:"wrap", alignItems:"center" }}>
         <select style={{ ...ss.sel, width:"auto", minWidth:120 }} value={fYear} onChange={e=>setFYear(e.target.value)}>
           <option value="">Semua Tahun</option>
           {years.map(y=><option key={y} value={y}>{y}</option>)}
         </select>
-        <select style={{ ...ss.sel, width:"auto", minWidth:140 }} value={fMonth} onChange={e=>setFMonth(e.target.value)}>
+        <select style={{ ...ss.sel, width:"auto", minWidth:150 }} value={fMonth} onChange={e=>setFMonth(e.target.value)}>
           <option value="">Semua Bulan</option>
           {MONTHS.map((m,idx)=><option key={m} value={idx}>{m}</option>)}
         </select>
         {activeCount > 0 && (
           <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>
         )}
-        <div style={{ fontSize:11, color:C.muted, marginLeft:"auto" }}>{matchedVoyageCount} voyage</div>
       </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
-        <div style={{ background:C.bg3, border:`1px solid ${C.green}30`, borderTop:`3px solid ${C.green}`, borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontSize:22, fontWeight:700, color:C.green, marginBottom:4 }}>{totalSailDays.toFixed(2)} hari</div>
-          <div style={{ fontSize:10, color:C.muted }}>Total Sailing (BOSV→EOSV) / {fmtH(totalSailH)}</div>
-        </div>
-        <div style={{ background:C.bg3, border:`1px solid ${C.red}30`, borderTop:`3px solid ${C.red}`, borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontSize:22, fontWeight:700, color:C.red, marginBottom:4 }}>{(totalDtH/24).toFixed(2)} hari</div>
-          <div style={{ fontSize:10, color:C.muted }}>Total Downtime (incl. Shelter)</div>
-        </div>
-        <div style={{ background:C.bg3, border:`1px solid ${C.horizon}30`, borderTop:`3px solid ${C.horizon}`, borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontSize:22, fontWeight:700, color:C.horizon, marginBottom:4 }}>{(totalInPortH/24).toFixed(2)} hari</div>
-          <div style={{ fontSize:10, color:C.muted }}>Total In Port (EOSV→next BOSV)</div>
-        </div>
-        <div style={{ background:C.bg3, border:`1px solid ${C.amber}30`, borderTop:`3px solid ${C.amber}`, borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontSize:22, fontWeight:700, color:C.amber, marginBottom:4 }}>{(totalAnchorH/24).toFixed(2)} hari</div>
-          <div style={{ fontSize:10, color:C.muted }}>Total Anchorage (Drop→Anch Up)</div>
-        </div>
+      <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:12 }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1600, fontSize:11 }}>
+          <thead>
+            <tr>
+              <th colSpan={23} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>2026</th>
+            </tr>
+            <tr>
+              <th colSpan={23} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>June</th>
+            </tr>
+            <tr>
+              <th rowSpan={2} colSpan={2} style={{ ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nama Kapal</th>
+              <th colSpan={7} style={{ ...ss.th, fontSize:10, letterSpacing:"0.06em" }}>VESSEL ACTIVITY</th>
+              <th colSpan={6} style={{ ...ss.th, fontSize:10, letterSpacing:"0.06em" }}>Konsumsi BBM (Litre)</th>
+              <th colSpan={8} style={{ ...ss.th, fontSize:10, letterSpacing:"0.06em" }}>PERFORMANCE</th>
+            </tr>
+            <tr>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Sailing (Hari)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Anchorage (Hari)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>At Port (Hari)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Downtime (Hari)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Total (Hari)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Laut (NM)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>ME</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>ME (Mei)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AE at Sea (Mei)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AE at Port (Mei)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>ME (Juni)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AE at Sea (Juni)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AE at Port (Juni)</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Avg/Miles</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Avg/Hari</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Target Parameter ME/Day</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>Realisasi Pemakaian ME/Day</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AVE Speed May</th>
+              <th style={{ ...ss.th, padding:"6px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9 }}>AVE Speed June</th>
+            </tr>
+          </thead>
+          <tbody>
+            {SHIPS.map((ship, idx) => (
+              <tr key={ship}>
+                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", textAlign:"center" }}>{idx+1}</td>
+                <td style={{ ...ss.td(idx%2), fontWeight:600, whiteSpace:"nowrap", minWidth:130, textAlign:"left" }}>{ship}</td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+                <td style={ss.td(idx%2)}></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      <div style={{ marginTop:12 }}>
-        <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:8 }}>Fuel Consumption (KL/MT)</div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
-          {/* Sailing Cons */}
-          <div style={{ background:C.bg3, border:`1px solid ${C.green}30`, borderTop:`3px solid ${C.green}`, borderRadius:12, padding:"14px 16px" }}>
-            <div style={{ fontSize:11, fontWeight:700, color:C.green, marginBottom:8 }}>⛽ Cons Sailing</div>
-            <div style={{ fontSize:11, color:C.muted, marginBottom:4 }}>Dep FWE → Arr SBE/EOSV</div>
-            <div style={{ display:"flex", gap:16, marginTop:6 }}>
-              <div>
-                <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>MFO</div>
-                <div style={{ fontSize:20, fontWeight:700, color:C.text }}>{sailConsMFO != null && sailConsMFO > 0 ? sailConsMFO.toFixed(3) : sailConsMFO === 0 ? "0.000" : "—"}</div>
-              </div>
-              <div style={{ width:1, background:C.border }}/>
-              <div>
-                <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>MDO</div>
-                <div style={{ fontSize:20, fontWeight:700, color:C.text }}>{sailConsMDO != null && sailConsMDO > 0 ? sailConsMDO.toFixed(3) : sailConsMDO === 0 ? "0.000" : "—"}</div>
-              </div>
-            </div>
-          </div>
-          {/* In Port Cons */}
-          <div style={{ background:C.bg3, border:`1px solid ${C.horizon}30`, borderTop:`3px solid ${C.horizon}`, borderRadius:12, padding:"14px 16px" }}>
-            <div style={{ fontSize:11, fontWeight:700, color:C.horizon, marginBottom:8 }}>⛽ Cons In Port</div>
-            <div style={{ fontSize:11, color:C.muted, marginBottom:4 }}>(Arr SBE + Recv Bunker) − next Dep FWE</div>
-            <div style={{ display:"flex", gap:16, marginTop:6 }}>
-              <div>
-                <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>MFO</div>
-                <div style={{ fontSize:20, fontWeight:700, color:C.text }}>{portConsMFO > 0 ? portConsMFO.toFixed(3) : portConsMFO === 0 ? "0.000" : "—"}</div>
-              </div>
-              <div style={{ width:1, background:C.border }}/>
-              <div>
-                <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>MDO</div>
-                <div style={{ fontSize:20, fontWeight:700, color:C.text }}>{portConsMDO > 0 ? portConsMDO.toFixed(3) : portConsMDO === 0 ? "0.000" : "—"}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {(fYear || fMonth) && (
         <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
-          * Time dihitung proporsional per bulan. Fuel cons dihitung per voyage berdasarkan bulan BOSV.
+          * Filter aktif: {fYear ? fYear : 'semua tahun'} / {fMonth ? MONTHS[fMonth] : 'semua bulan'}. Kolom akan diisi formula sesuai bulan terpilih.
         </div>
       )}
     </div>

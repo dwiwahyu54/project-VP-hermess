@@ -1746,7 +1746,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               {F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}
               {F("Wind Bf","wbf")}
             </div>
-            {F("Sea State","sea",["Calm","Slight","Moderate","Rough","Very Rough"])}
+            {F("Sea State","sea",["Calm","Smooth","Slight","Moderate","Rough","Very Rough"])}
           </>
         )}
 

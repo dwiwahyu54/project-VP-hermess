@@ -906,7 +906,6 @@ function TankSection({ fref, type }) {
   );
 }
 
-
 function TankSectionROB({ fref }) {
   const isMobile = useIsMobile();
 
@@ -1934,7 +1933,6 @@ function getShipCurrentStatus(ship, voys) {
     if (lastVoy && lastVoy.ship === "Mavendra Mas" && lastVoy.no === "57") {
     }
 
-
     if (arrBerthReport && fweArrBerth) {
       // Berth arrival: FWE (arr_berth) → current time
       berthH = diffH(fweArrBerth, now);
@@ -2608,21 +2606,15 @@ const handleDownloadExcel = async () => {
           <option value="">Semua Bulan</option>
           {MONTHS.map((m,idx)=><option key={m} value={idx}>{m}</option>)}
         </select>
-        {activeCount > 0 && (
-        {activeCount > 0 && (
-        <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>)}
+        {activeCount > 0 ? (
+          <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>
+        ) : null}
         <button 
          style={{ ...ss.btn, background:"linear-gradient(135deg,#25D366,#128C7E)", padding:"6px 16px", marginLeft:"auto" }}
         onClick={handleDownloadExcel}>
         ⬇️ Download Excel
         </button>
-        <button 
-         style={{ ...ss.btn, background:"linear-gradient(135deg,#25D366,#128C7E)", padding:"6px 16px", marginLeft:"auto" }}
-        onClick={handleDownloadExcel}>
-        ⬇️ Download Excel
-        </button>
-        
-      </div>
+
       <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:12 }}>
         <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
           <thead>
@@ -3615,7 +3607,6 @@ function ManagementReport({ reports, runningHours, user }) {
   const prevLabel = fMonth !== "" ? MONTHS[(Number(fMonth)+11)%12] : "Mei";
   const resetFilters = () => { setFShip(""); setFYear(""); setFMonth(""); };
   const activeCount = [fShip, fYear, fMonth].filter(x=>x!=="").length;
-
 
   const handleExport = () => {
     const filenameParts = ["downtime-report"];

@@ -2614,10 +2614,14 @@ const handleDownloadExcel = async () => {
         onClick={handleDownloadExcel}>
         ⬇️ Download Excel
         </button>
+        </div>
 
 
 
 
+      <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:12 }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
+          <thead>
             <tr>
               <th colSpan={20} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
                 {fYear ? fYear : new Date().getFullYear()}

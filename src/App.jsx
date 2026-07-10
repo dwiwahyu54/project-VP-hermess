@@ -2503,7 +2503,8 @@ const handleDownloadExcel = async () => {
     "Sailing (Hari)", "Anchorage (Hari)", "At Port (Hari)", "Downtime (Hari)", "Total (Hari)", "Laut (NM)",
     `ME ${prevLabel}`, `AE at Sea ${prevLabel}`, `AE at Port ${prevLabel}`,
     `ME ${curLabel}`, `AE at Sea ${curLabel}`, `AE at Port ${curLabel}`,
-    `AVG Speed ${prevLabel}`, `AVG Speed ${curLabel}`
+    `AVG Speed ${prevLabel}`, `AVG Speed ${curLabel}`,
+    `Avg/Miles ${curLabel}`, `Avg/Hari ${curLabel}`, `Target Parameter ME/Day`, `Realisasi Pemakaian ME/Day`
   ];
   
   const activityData = [activityHeaders];
@@ -2521,7 +2522,8 @@ const handleDownloadExcel = async () => {
       "", "", "",
       "", "", "",
       AvgSpeedPrevByShip[ship] || "",
-      AvgSpeedByShip[ship] || ""
+      AvgSpeedByShip[ship] || "",
+      "", "", "", ""
     ]);
   });
   
@@ -2535,7 +2537,7 @@ const handleDownloadExcel = async () => {
     Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2),
     daysInSelectedMonth,
     Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1),
-    "", "", "", "", "", "", ""
+    "", "", "", "", "", "", "", "", "", ""
   ]);
 
   // SHEET 2: ANCHORAGE TIME
@@ -2585,7 +2587,7 @@ const handleDownloadExcel = async () => {
 
   // DOWNLOAD
   const sheets = [
-    { name: "Vessel Activity", data: activityData, widths: [5, 20, 14, 14, 14, 14, 10, 12, 12, 14, 14, 12, 14, 14, 14, 14] },
+    { name: "Vessel Activity", data: activityData, widths: [5, 20, 14, 14, 14, 14, 10, 12, 12, 14, 14, 12, 14, 14, 14, 12, 12, 12, 12, 12] },
     { name: "Anchorage Time", data: anchData, widths: [18, 12, 8, 22, 22, 16] },
     { name: "Berthing Time", data: berthData, widths: [18, 12, 8, 22, 22, 16] },
     { name: "Downtime Report", data: dtData, widths: [18, 20, 20, 14, 30, 18] }
@@ -2625,12 +2627,12 @@ const handleDownloadExcel = async () => {
         <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
           <thead>
             <tr>
-              <th colSpan={19} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
+              <th colSpan={20} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
                 {fYear ? fYear : new Date().getFullYear()}
               </th>
             </tr>
             <tr>
-              <th colSpan={19} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
+              <th colSpan={20} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
                 {curLabel}
               </th>
             </tr>
@@ -2656,6 +2658,10 @@ const handleDownloadExcel = async () => {
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({curLabel})</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {prevLabel}</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Avg/Miles {curLabel}</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Avg/Hari {curLabel}</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Target Parameter ME/Day</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Realisasi Pemakaian ME/Day</th>
             </tr>
           </thead>
           <tbody>
@@ -2678,7 +2684,10 @@ const handleDownloadExcel = async () => {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedPrevByShip[ship] || "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedByShip[ship] || "—"}</td>
-                
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
               </tr>
             ))}
           </tbody>

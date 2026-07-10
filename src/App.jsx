@@ -2497,38 +2497,38 @@ const handleDownloadExcel = async () => {
 
   // SHEET 1: VESSEL ACTIVITY
   const activityHeaders = [
-    "No", "Nama Kapal",
-    "Sailing (Hari)", "Anchorage (Hari)", "At Port (Hari)", "Downtime (Hari)", "Total (Hari)", "Laut (NM)",
-    `ME ${prevLabel}`, `AE at Sea ${prevLabel}`, `AE at Port ${prevLabel}`,
-    `ME ${curLabel}`, `AE at Sea ${curLabel}`, `AE at Port ${curLabel}`,
-    `AVG Speed ${prevLabel}`, `AVG Speed ${curLabel}`,
-    `Avg/Miles ${curLabel}`, `Avg/Hari ${curLabel}`, `Target Parameter ME/Day`, `Realisasi Pemakaian ME/Day`
+  const activityHeaders = [
+    "No","Nama Kapal",
+    "Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total (Hari)","Laut (NM)",
+    `ME ${prevLabel}`,`AE at Sea ${prevLabel}`,`AE at Port ${prevLabel}`,
+    `ME ${curLabel}`,`AE at Sea ${curLabel}`,`AE at Port ${curLabel}`,
+    `Avg/Miles ${curLabel}`,`Avg/Hari ${curLabel}`,`Target Parameter ME/Day`,`Realisasi Pemakaian ME/Day`,
+    `AVG Speed ${prevLabel}`,`AVG Speed ${curLabel}`
   ];
-  
   const activityData = [activityHeaders];
   
   SHIPS.forEach((ship, idx) => {
     activityData.push([
-      idx + 1,
-      ship,
-      SailingDaysByShip[ship] !== null ? SailingDaysByShip[ship].toFixed(2) : "",
-      (AnchorageDaysByShip[ship] || 0).toFixed(2),
+    activityData.push([
+      idx+1,ship,
+      (SailingDaysByShip[ship] !== null ? SailingDaysByShip[ship].toFixed(2) : ""),
+      (AnchorageDaysByShip[ship]||0).toFixed(2),
       AtPortDaysByShip[ship] !== null ? AtPortDaysByShip[ship].toFixed(2) : "",
-      (DowntimeDaysByShip[ship] || 0).toFixed(2),
+      (DowntimeDaysByShip[ship]||0).toFixed(2),
       daysInSelectedMonth,
-      (TotalDistanceByShip[ship] || 0).toFixed(1),
-      "", "", "",
-      "", "", "",
+      (TotalDistanceByShip[ship]||0).toFixed(1),
+      (FuelPrevByShip[ship]?.ME||0).toFixed(1),
+      (FuelPrevByShip[ship]?.AESea||0).toFixed(1),
+      (FuelPrevByShip[ship]?.AEPort||0).toFixed(1),
+      (FuelByShip[ship]?.ME||0).toFixed(1),
+      (FuelByShip[ship]?.AESea||0).toFixed(1),
+      (FuelByShip[ship]?.AEPort||0).toFixed(1),
+      (TotalDistanceByShip[ship]||0 ? ((TotalDistanceByShip[ship]||0)/(SailingDaysByShip[ship]||1)).toFixed(1) : ""),
+      (SailingDaysByShip[ship]||0).toFixed(2),
+      (FUEL_PARAMS[ship]?.me||0).toFixed(1),
+      (FuelByShip[ship]?.ME||0 && SailingDaysByShip[ship] ? (FuelByShip[ship]?.ME / SailingDaysByShip[ship]).toFixed(1) : ""),
       AvgSpeedPrevByShip[ship] || "",
-      AvgSpeedByShip[ship] || "",
-      "", "", "", ""
-    ]);
-  });
-  
-  const sailVals = Object.values(SailingDaysByShip).filter(v => v !== null);
-  const atPortVals = Object.values(AtPortDaysByShip).filter(v => v !== null);
-  activityData.push([
-    "TOTAL", "",
+      AvgSpeedByShip[ship] || ""
     sailVals.length > 0 ? sailVals.reduce((s,v)=>s+v,0).toFixed(2) : "",
     Object.values(AnchorageDaysByShip).reduce((s,h)=>s+h,0).toFixed(2),
     atPortVals.length > 0 ? atPortVals.reduce((s,v)=>s+v,0).toFixed(2) : "",
@@ -2642,25 +2642,13 @@ const handleDownloadExcel = async () => {
 
       <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:12 }}>
         <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
-          <thead>
-            <tr>
-              <th colSpan={20} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
-                {fYear ? fYear : new Date().getFullYear()}
-              </th>
-            </tr>
-            <tr>
-              <th colSpan={20} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
-                {curLabel}
-              </th>
-            </tr>
             <tr>
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>No</th>
               <th rowSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, textTransform:"uppercase", letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Nama Kapal</th>
               <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Activity</th>
               <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Konsumsi BBM (Litre)</th>
-              <th colSpan={6} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance</th>
-              <th colSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Avg Miles & Avg Hari</th>
-              <th colSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Parameter</th>
+              <th colSpan={4} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>Performance</th>
+              <th colSpan={2} style={{ border:`1px solid ${C.border}`, ...ss.th, fontSize:10, letterSpacing:"0.06em", padding:"8px 10px", textAlign:"center" }}>AVG Speed</th>
             </tr>
             <tr>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Sailing (Hari)</th>
@@ -2674,19 +2662,13 @@ const handleDownloadExcel = async () => {
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({prevLabel})</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>ME ({curLabel})</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Sea ({curLabel})</th>
-
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AE at Port ({curLabel})</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Avg/Miles {curLabel}</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Avg/Hari {curLabel}</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Target Parameter ME/Day</th>
+              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Realisasi Pemakaian ME/Day</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {prevLabel}</th>
               <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Avg/Miles {curLabel}</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Avg/Hari {curLabel}</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Target Parameter ME/Day</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Realisasi Pemakaian ME/Day</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>AVG Speed {curLabel}</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Avg/Miles {curLabel}</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Avg/Hari {curLabel}</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Target Parameter ME/Day</th>
-              <th style={{ border:"1px solid rgba(40,110,170,0.5)", ...ss.th, padding:"7px 9px", textTransform:"uppercase", letterSpacing:"0.05em", fontSize:9, textAlign:"center" }}>Realisasi Pemakaian ME/Day</th>
             </tr>
           </thead>
           <tbody>
@@ -2707,15 +2689,34 @@ const handleDownloadExcel = async () => {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(() => { return (FuelByShip[ship]?.AESea||0).toFixed(1); })()}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(() => { return (FuelByShip[ship]?.AEPort||0).toFixed(1); })()}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(() => { const miles=(TotalDistanceByShip[ship]||0); const sail=(SailingDaysByShip[ship]||0); return sail>0?(miles/sail).toFixed(1):"—" })()}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(() => { const miles=(TotalDistanceByShip[ship]||0); const sail=(SailingDaysByShip[ship]||0); return sail>0?miles.toFixed(1):"—" })()}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(() => { const tgt=(FUEL_PARAMS[ship]?.me||0); return tgt>0?tgt.toFixed(1):"—" })()}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(() => { const f=(FuelByShip[ship]?.ME||0); const d=(SailingDaysByShip[ship]||0); return d>0?(f/d).toFixed(1):"—" })()}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedPrevByShip[ship] || "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedByShip[ship] || "—"}</td>
-              </tr>
             ))}
           </tbody>
           <tfoot>
+            <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
+              <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
+              <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>
+              <td style={ss.td(1)}>{(() => { const vals = Object.values(SailingDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
+              <td style={ss.td(1)}>{(() => { const vals = Object.values(AnchorageDaysByShip).filter(v => v !== undefined); const sum = vals.reduce((s,v)=>s+v,0); return sum > 0 ? sum.toFixed(2) : "—"; })()}</td>
+              <td style={ss.td(1)}>{(() => { const vals = Object.values(AtPortDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
+              <td style={ss.td(1)}>{(() => { const vals = Object.values(DowntimeDaysByShip).filter(v => v !== undefined); const sum = vals.reduce((s,v)=>s+v,0); return sum > 0 ? sum.toFixed(2) : "—"; })()}</td>
+              <td style={ss.td(1)}>{daysInSelectedMonth}</td>
+              <td style={ss.td(1)}>{(() => { const vals = Object.values(TotalDistanceByShip); return vals.reduce((s,h)=>s+h,0).toFixed(1); })()}</td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+              <td style={ss.td(1)}></td>
+            </tr>
+          </tfoot>
             <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
               <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
               <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>

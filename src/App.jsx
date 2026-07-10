@@ -2615,9 +2615,9 @@ const handleDownloadExcel = async () => {
         ⬇️ Download Excel
         </button>
 
-      <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:12 }}>
-        <table style={{ borderCollapse:"collapse", width:"100%", tableLayout:"auto", minWidth:1800, fontSize:11 }}>
-          <thead>
+
+
+
             <tr>
               <th colSpan={20} style={{ background:`${C.muted}18`, color:C.muted, fontSize:12, fontWeight:800, letterSpacing:"0.04em", border:`1px solid ${C.border}` }}>
                 {fYear ? fYear : new Date().getFullYear()}
@@ -2749,9 +2749,9 @@ function ReportLog({ reports, onView, user }) {
           <option value="">Semua Jenis Laporan</option>
           {RT.map(r=><option key={r.id} value={r.id}>{r.label}</option>)}
         </select>
-        {activeCount > 0 && (
+        {activeCount > 0 ? (
           <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>
-        )}
+        ) : null}
         <div style={{ fontSize:11, color:C.muted, marginLeft:"auto" }}>{sorted.length} laporan</div>
       </div>
 
@@ -3995,9 +3995,9 @@ function ManagementReport({ reports, runningHours, user }) {
           <option value="">Semua Bulan</option>
           {MONTHS.map((m,idx)=><option key={m} value={idx}>{m}</option>)}
         </select>
-        {activeCount > 0 && (
+        {activeCount > 0 ? (
           <button style={ss.btnG} onClick={resetFilters}>✕ Reset Filter ({activeCount})</button>
-        )}
+        ) : null}
       </div>
 
       <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap", alignItems:"center" }}>

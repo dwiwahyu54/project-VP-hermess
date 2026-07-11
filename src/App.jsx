@@ -1746,7 +1746,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               {F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}
               {F("Wind Bf","wbf")}
             </div>
-            {F("Sea State","sea",["Calm","Smooth","Slight","Moderate","Rough","Very Rough"])}
+            {F("Sea State","sea",["Calm","Slight","Moderate","Rough","Very Rough"])}
           </>
         )}
 
@@ -2377,6 +2377,13 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
     const nextMonthIdx = nextMonth > 11 ? 0 : nextMonth;
     const shipVoys = voys.filter(v => v.ship === ship);
 
+    // Target Parameter ME/Day
+  const TargetParamByShip = {};
+  SHIPS.forEach(ship => {
+  const me = FUEL_PARAMS[ship]?.me;
+  TargetParamByShip[ship] = me ? (me * 24).toFixed(2) : "";
+});
+
     // 1. Arrival reports in this month
     reports
       .filter(r => ["arr_berth","arr_anchor"].includes(r.type))
@@ -2505,7 +2512,7 @@ const handleDownloadExcel = async () => {
   ];
   
   const activityData = [activityHeaders];
-  
+  // RUMUS TABE VESSEL ACTIVITY
   SHIPS.forEach((ship, idx) => {
     activityData.push([
       idx + 1,
@@ -2516,8 +2523,16 @@ const handleDownloadExcel = async () => {
       (DowntimeDaysByShip[ship] || 0).toFixed(2),
       daysInSelectedMonth,
       (TotalDistanceByShip[ship] || 0).toFixed(1),
-      "", "", "", "", "", "",  // 6 kolom BBM (kosong)
-      "", "", "", "",          // 4 kolom Performance (kosong)
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",  // 6 kolom BBM (kosong)
+      "",
+      "",
+      (FUEL_PARAMS[ship]?.me ? (FUEL_PARAMS[ship].me * 24).toFixed(2) : ""),
+      "",          // 4 kolom Performance (kosong)
       AvgSpeedPrevByShip[ship] || "",
       AvgSpeedByShip[ship] || ""
     ]);
@@ -2596,7 +2611,7 @@ const handleDownloadExcel = async () => {
 
   return (
     <div>
-      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Activity</div>
+      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Vessel Report</div>
       <div style={{ display:"flex", gap:10, marginBottom:12, flexWrap:"wrap", alignItems:"center" }}>
         <select style={{ ...ss.sel, width:"auto", minWidth:120 }} value={fYear} onChange={e=>setFYear(e.target.value)}>
           <option value="">Semua Tahun</option>
@@ -2680,7 +2695,8 @@ const handleDownloadExcel = async () => {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(FUEL_PARAMS[ship]?.me ? (FUEL_PARAMS[ship].me * 24).toFixed(2) : "—")}</td>
+                
                
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
                 

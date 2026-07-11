@@ -2084,13 +2084,13 @@ function Dashboard({ reports, onNew, user, runningHours }) {
      </table>
       </div>
 
-      <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours}/>
+      <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours} consMe={consMe}/>
     </div>
   );
 }
 
 // === VOYAGE SUMMARY WITH FILTERS ================================================
-function VoyageSummary({ reports, voys, user, runningHours }) {
+function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   
@@ -2343,6 +2343,21 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
     TotalDistanceByShip[ship] = shipEntries.reduce((sum, r) => sum + (parseFloat(r.ttl_dist) || 0), 0);
   });
 
+
+  // Per-ship Cons ME (MT/day) - from RH & Cons ME menu
+  // Column ME {prevLabel} = consMe data from prev month
+  const ConsMeByShip = {};
+  SHIPS.forEach(ship => {
+    const tYear = fYear ? Number(fYear) : new Date().getFullYear();
+    const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+    const prevMonth = tMonth - 1 < 0 ? 11 : tMonth - 1;
+    const prevYear = tMonth - 1 < 0 ? tYear - 1 : tYear;
+    const prevKey = `${ship}|${prevYear}|${prevMonth}`;
+    const val = consMe?.[prevKey]?.cons_me;
+    ConsMeByShip[ship] = val != null && val !== "" ? parseFloat(val) : null;
+  });
+
+
   // Helper functions for AVG Speed (same as Management Report)
   const getFirstArrivalBeforeNoon = (ship, voy, year, month, day) => {
     const candidates = reports.filter(r =>
@@ -2523,16 +2538,16 @@ const handleDownloadExcel = async () => {
       (DowntimeDaysByShip[ship] || 0).toFixed(2),
       daysInSelectedMonth,
       (TotalDistanceByShip[ship] || 0).toFixed(1),
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",  // 6 kolom BBM (kosong)
-      "",
-      "",
-      (FUEL_PARAMS[ship]?.me ? (FUEL_PARAMS[ship].me * 24).toFixed(2) : ""),
-      "",          // 4 kolom Performance (kosong)
+      ConsMeByShip[ship] != null ? ConsMeByShip[ship].toFixed(2) : "",
+      "—",
+      "—",
+      "—",
+      "—",
+      "—",
+      "—",
+      "—",
+      "—",
+      "—",
       AvgSpeedPrevByShip[ship] || "",
       AvgSpeedByShip[ship] || ""
     ]);
@@ -2687,15 +2702,15 @@ const handleDownloadExcel = async () => {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{daysInSelectedMonth}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(TotalDistanceByShip[ship] || 0).toFixed(1)}</td>
                 
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+<td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}>{ConsMeByShip[ship] != null ? ConsMeByShip[ship].toFixed(2) : "—"}</td>
+<td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}>{"—"}</td>
+<td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}>{"—"}</td>
+<td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}>{"—"}</td>
+<td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}>{"—"}</td>
+<td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}>{"—"}</td>
+<td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}>{"—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(FUEL_PARAMS[ship]?.me ? (FUEL_PARAMS[ship].me * 24).toFixed(2) : "—")}</td>
+<td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
                 
                
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
@@ -2716,14 +2731,14 @@ const handleDownloadExcel = async () => {
               <td style={ss.td(1)}>{daysInSelectedMonth}</td>
               <td style={ss.td(1)}>{Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)}</td>
               
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
+<td style={ss.td(1)}>"—"</td>
+<td style={ss.td(1)}>"—"</td>
+<td style={ss.td(1)}>"—"</td>
+<td style={ss.td(1)}>"—"</td>
+<td style={ss.td(1)}>"—"</td>
+<td style={ss.td(1)}>"—"</td>
+<td style={ss.td(1)}>"—"</td>
+<td style={ss.td(1)}>"—"</td>
             </tr>
           </tfoot>
         </table>

@@ -2719,7 +2719,7 @@ const handleDownloadExcel = async () => {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeCurByShip[ship] != null && TotalDistanceByShip[ship] ? (ConsMeCurByShip[ship] / TotalDistanceByShip[ship]).toFixed(4) : "—"}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeCurByShip[ship] != null && SailingDaysByShip[ship] !== null ? (ConsMeCurByShip[ship] / SailingDaysByShip[ship]).toFixed(4) : "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(FUEL_PARAMS[ship]?.me ? (FUEL_PARAMS[ship].me * 24).toFixed(2) : "—")}</td>
                 
                

@@ -2084,13 +2084,13 @@ function Dashboard({ reports, onNew, user, runningHours }) {
      </table>
       </div>
 
-      <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours}/>
+      <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours} consMe={consMe}/>
     </div>
   );
 }
 
 // === VOYAGE SUMMARY WITH FILTERS ================================================
-function VoyageSummary({ reports, voys, user, runningHours }) {
+function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   
@@ -2341,6 +2341,18 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
         return yearOk && monthOk;
       });
     TotalDistanceByShip[ship] = shipEntries.reduce((sum, r) => sum + (parseFloat(r.ttl_dist) || 0), 0);
+  });
+
+  // Per-ship Cons ME (MT/day) from RH Cons ME menu
+  const ConsMeByShip = {};
+  SHIPS.forEach(ship => {
+    const tYear = fYear ? Number(fYear) : new Date().getFullYear();
+    const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+    const prevMonth = tMonth - 1 < 0 ? 11 : tMonth - 1;
+    const prevYear = tMonth - 1 < 0 ? tYear - 1 : tYear;
+    const prevKey = `${ship}|${prevYear}|${prevMonth}`;
+    const val = consMe?.[prevKey]?.cons_me;
+    ConsMeByShip[ship] = val != null && val !== "" ? parseFloat(val) : null;
   });
 
   // Helper functions for AVG Speed (same as Management Report)
@@ -2688,7 +2700,7 @@ const handleDownloadExcel = async () => {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(TotalDistanceByShip[ship] || 0).toFixed(1)}</td>
                 
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeByShip[ship] != null ? ConsMeByShip[ship].toFixed(2) : "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>

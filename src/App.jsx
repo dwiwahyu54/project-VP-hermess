@@ -3069,7 +3069,6 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
   const [showRhForm, setShowRhForm] = useState(false);
 
   // Cons ME state
-  const [consMe, setConsMe] = useState({});
   const [consMeShip, setConsMeShip] = useState(user?.ship || SHIPS[0]);
   const [consMeYear, setConsMeYear] = useState(new Date().getFullYear());
   const [consMeMonth, setConsMeMonth] = useState(new Date().getMonth());
@@ -4347,7 +4346,7 @@ export default function App() {
   const [viewing,  setViewing]  = useState(null);
   const [editing,  setEditing]  = useState(null);
   const [runningHours, setRunningHours] = useState({}); // key: "ship|year|month" -> {me, ae}
-const [consMe, setConsMe] = useState({}); // key: "ship|year|month" -> {cons_me}
+  const [consMe, setConsMe] = useState({}); // key: "ship|year|month" -> {cons_me}
   const [theme, setTheme] = useState("light");
 
   // Check Supabase session on mount

@@ -1985,7 +1985,7 @@ function getShipCurrentStatus(ship, voys) {
 }
 
 // --- DASHBOARD ----------------------------------------------------------------
-function Dashboard({ reports, onNew, user, runningHours }) {
+function Dashboard({ reports, onNew, user, runningHours, consMe }) {
   const voys = computeVoyages(reports);
 
   // Get status for each ship
@@ -2084,13 +2084,13 @@ function Dashboard({ reports, onNew, user, runningHours }) {
      </table>
       </div>
 
-      <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours}/>
+      <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours} consMe={consMe}/>
     </div>
   );
 }
 
 // === VOYAGE SUMMARY WITH FILTERS ================================================
-function VoyageSummary({ reports, voys, user, runningHours }) {
+function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   
@@ -2341,6 +2341,18 @@ function VoyageSummary({ reports, voys, user, runningHours }) {
         return yearOk && monthOk;
       });
     TotalDistanceByShip[ship] = shipEntries.reduce((sum, r) => sum + (parseFloat(r.ttl_dist) || 0), 0);
+  });
+
+  // Per-ship Cons ME (MT/day) from RH Cons ME menu
+  const ConsMeByShip = {};
+  SHIPS.forEach(ship => {
+    const tYear = fYear ? Number(fYear) : new Date().getFullYear();
+    const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+    const prevMonth = tMonth - 1 < 0 ? 11 : tMonth - 1;
+    const prevYear = tMonth - 1 < 0 ? tYear - 1 : tYear;
+    const prevKey = `${ship}|${prevYear}|${prevMonth}`;
+    const val = consMe?.[prevKey]?.cons_me;
+    ConsMeByShip[ship] = val != null && val !== "" ? parseFloat(val) : null;
   });
 
   // Helper functions for AVG Speed (same as Management Report)
@@ -2688,7 +2700,7 @@ const handleDownloadExcel = async () => {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(TotalDistanceByShip[ship] || 0).toFixed(1)}</td>
                 
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeByShip[ship] != null ? ConsMeByShip[ship].toFixed(2) : "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)" }}></td>
@@ -3042,7 +3054,7 @@ function RunningHoursInput({ rhKey, current, onSave }) {
 }
 
 // --- RH & CONSUMPTION PAGE -----------------------------------------------------
-function RHConsPage({ runningHours, setRunningHours, user }) {
+function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) {
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
   const [rhShip, setRhShip] = useState(user?.ship || SHIPS[0]);
   const [rhYear, setRhYear] = useState(new Date().getFullYear());
@@ -4335,6 +4347,7 @@ export default function App() {
   const [viewing,  setViewing]  = useState(null);
   const [editing,  setEditing]  = useState(null);
   const [runningHours, setRunningHours] = useState({}); // key: "ship|year|month" -> {me, ae}
+const [consMe, setConsMe] = useState({}); // key: "ship|year|month" -> {cons_me}
   const [theme, setTheme] = useState("light");
 
   // Check Supabase session on mount
@@ -4358,7 +4371,7 @@ export default function App() {
 
   // Load reports when user is authenticated
   useEffect(() => {
-    if (user) { loadReports(); loadRunningHours(); }
+    if (user) { loadReports(); loadRunningHours(); loadConsMe(); }
   }, [user]);
 
   // Ship-restricted accounts (profile.ship set) only ever see their own
@@ -4376,6 +4389,17 @@ export default function App() {
         map[`${row.ship}|${row.year}|${row.month}`] = { me: row.me_hours ?? "", ae: row.ae_hours ?? "" };
       });
       setRunningHours(map);
+  } catch (err) { console.error("Error loading runningHours:", err); }
+};
+const loadConsMe = async () => {
+  try {
+    const { data, error } = await supabase.from('cons_me').select('*');
+    if (error) throw error;
+    const map = {};
+    (data || []).forEach(row => {
+      map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "" };
+    });
+    setConsMe(map);
     } catch (err) { console.error("Error loading running hours:", err); }
   };
 
@@ -4483,11 +4507,11 @@ export default function App() {
           </nav>
         )}
         <main style={{ ...ss.main, paddingBottom: isMobile ? 80 : 22 }}>
-          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user} runningHours={runningHours}/>}
+          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user} runningHours={runningHours} consMe={consMe}/>}
           {page==="new"       && <ReportForm onSave={addReport} onCancel={() => setPage("dashboard")} allReports={visibleReports} user={user}/>}
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
           {page==="log"       && <ReportLog reports={visibleReports} onView={setViewing} user={user}/>}
-          {page==="rh"        && <RHConsPage runningHours={runningHours} setRunningHours={setRunningHours} user={user}/>}
+          {page==="rh"        && <RHConsPage runningHours={runningHours} setRunningHours={setRunningHours} consMe={consMe} setConsMe={setConsMe} user={user}/>}
           {page==="mgmt"      && <ManagementReport reports={visibleReports} runningHours={runningHours} user={user}/>}
         </main>
       </div>

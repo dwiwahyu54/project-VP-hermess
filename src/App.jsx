@@ -3285,7 +3285,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
 
   return (
     <div>
-      <div style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>RH & Cons ME</div>
+      <div style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>RH & Cons ME&AE</div>
       <div style={{ fontSize:11, color:C.muted, marginBottom:14 }}>Running Hours & Konsumsi BBM per Kapal</div>
 
       {/* Data Table RH */}

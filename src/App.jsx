@@ -2419,7 +2419,7 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
   const TargetParamByShip = {};
   SHIPS.forEach(ship => {
   const me = FUEL_PARAMS[ship]?.me;
-  TargetParamByShip[ship] = me ? (me * 24).toFixed(2) : "";
+  TargetParamByShip[ship] = me ? (me * 24).toFixed(0) : "";
 });
 
     // 1. Arrival reports in this month

@@ -2064,25 +2064,6 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
         </div>
       </div>
 
-      <div style={{ fontSize:10, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>Voyage History (Last 10)</div>
-      <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto", marginBottom:22 }}>
-      <table className="voyage-main-table" style={{ ...ss.tbl, minWidth:480 }}>
-         <thead><tr>{["Voyage","Kapal","Port","Waktu","Sailing","Downtime"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr></thead>
-         <tbody>
-         {voys.length===0 && <tr><td colSpan={6} style={{ ...ss.td(false), textAlign:"center", color:C.muted, padding:28 }}>Belum ada data voyage</td></tr>}
-         {voys.slice(-10).map((v,i) => (
-         <tr key={v.no + v.ship}>
-         <td style={{ ...ss.td(i%2), color:C.accent, fontWeight:700 }}>{v.no}</td>
-         <td style={{ ...ss.td(i%2), fontWeight:600 }}>MV {v.ship}</td>
-         <td style={ss.td(i%2)}>{v.dep?.port||"-"}</td>
-         <td style={ss.td(i%2)}>{fmtDT(v.dep?.ts)}</td>
-         <td style={{ ...ss.td(i%2), color:C.green, fontWeight:700 }}>{v.sailH!=null?fmtH(v.sailH):"-"}</td>
-         <td style={{ ...ss.td(i%2), color:v.dtH>0?C.red:C.muted, fontWeight:v.dtH>0?700:400 }}>{v.dtH>0?fmtH(v.dtH):"—"}</td>
-         </tr>
-         ))}
-         </tbody>
-     </table>
-      </div>
 
       <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours} consMe={consMe}/>
     </div>

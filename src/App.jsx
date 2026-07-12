@@ -2771,10 +2771,7 @@ const handleDownloadExcel = async () => {
               <td style={ss.td(1)}>{(() => { const vals = Object.values(AtPortDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
               <td style={ss.td(1)}>{Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
               <td style={ss.td(1)}>{daysInSelectedMonth}</td>
-              <td style={{ ...ss.td(1), cursor:"pointer", color:C.horizon, fontWeight:700, textDecoration:"underline dotted" }}
-                onClick={() => setShowDistanceDetail(!showDistanceDetail)}>
-                {Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)} {showDistanceDetail ? "▲" : "▼"}
-              </td>
+                <td style={ss.td(1)}>{Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)}</td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>

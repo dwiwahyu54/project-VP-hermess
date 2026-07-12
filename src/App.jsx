@@ -2761,20 +2761,20 @@ const handleDownloadExcel = async () => {
             <tr style={{ background:`${C.muted}18`, fontWeight:800, letterSpacing:"0.06em", fontSize:10, color:C.muted }}>
               <td style={{ textAlign:"center", border:`1px solid ${C.border}`, padding:"7px 9px" }}>TOTAL</td>
               <td style={{ border:`1px solid ${C.border}`, padding:"7px 9px" }}></td>
-              <td style={ss.td(1)}>{(() => { const vals = Object.values(SailingDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
-              <td style={ss.td(1)}>{Object.values(AnchorageDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
-              <td style={ss.td(1)}>{(() => { const vals = Object.values(AtPortDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
-              <td style={ss.td(1)}>{Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
-              <td style={ss.td(1)}>{daysInSelectedMonth}</td>
-                <td style={ss.td(1)}>{Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)}</td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
-              <td style={ss.td(1)}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{(() => { const vals = Object.values(SailingDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(AnchorageDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{(() => { const vals = Object.values(AtPortDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}>{daysInSelectedMonth}</td>
+                <td style={{ ...ss.td(1), textAlign:"center" }}>{Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)}</td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}></td>
+              <td style={{ ...ss.td(1), textAlign:"center" }}></td>
             </tr>
           </tfoot>
         </table>

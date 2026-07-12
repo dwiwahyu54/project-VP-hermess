@@ -4474,17 +4474,17 @@ export default function App() {
     } catch (err) { console.error("Error loading running hours:", err); }
   };
 
-const loadConsMe = async () => {
-  try {
-    const { data, error } = await supabase.from('cons_me').select('*');
-    if (error) throw error;
-    const map = {};
-    (data || []).forEach(row => {
-      map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "", cons_ae: row.cons_ae ?? "" };
-    });
-    setConsMe(map);
-  } catch (err) { console.error("Error loading cons_me:", err); }
-};
+  const loadConsMe = async () => {
+    try {
+      const { data, error } = await supabase.from('cons_me').select('*');
+      if (error) throw error;
+      const map = {};
+      (data || []).forEach(row => {
+        map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "", cons_ae: row.cons_ae ?? "" };
+      });
+      setConsMe(map);
+    } catch (err) { console.error("Error loading cons_me:", err); }
+  };
 
   const loadReports = async () => {
     try {

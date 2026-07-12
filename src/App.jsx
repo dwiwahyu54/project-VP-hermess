@@ -2636,25 +2636,12 @@ const handleDownloadExcel = async () => {
     });
   });
 
-  // SHEET 5: RINCIAN DOWNTIME (per entry, not split by month)
-  const dtDetailHeaders = ["Nama Kapal", "Start Downtime", "Finish Downtime", "Duration (days)", "Reason", "Category"];
-  const dtDetailData = [dtDetailHeaders];
-  const rawDtEntries = getAllDowntimeEntries(reports);
-  rawDtEntries.forEach(e => {
-    const yearOk = !fYear || new Date(e.t0).getFullYear() === Number(fYear);
-    const monthOk = !fMonth || new Date(e.t0).getMonth() === Number(fMonth);
-    if (yearOk && monthOk) {
-      dtDetailData.push([e.ship, fmtDateForCSV(e.t0), fmtDateForCSV(e.t1), (e.durationH/24).toFixed(2), e.reason || "", e.category || ""]);
-    }
-  });
-
   // DOWNLOAD
   const sheets = [
     { name: "Vessel Activity", data: activityData, widths: [5, 20, 14, 14, 14, 14, 10, 12, 12, 14, 14, 12, 14, 14, 14, 12, 12, 12, 12, 12] },
     { name: "Anchorage Time", data: anchData, widths: [18, 12, 8, 22, 22, 16] },
     { name: "Berthing Time", data: berthData, widths: [18, 12, 8, 22, 22, 16] },
     { name: "Downtime Report", data: dtData, widths: [18, 20, 20, 14, 30, 18] },
-    { name: "Rincian Downtime", data: dtDetailData, widths: [18, 22, 22, 14, 26, 16] }
   ];
   
   await downloadMultiSheetExcel(sheets, `MMM_Report_${tYear}_${curLabel}.xlsx`);

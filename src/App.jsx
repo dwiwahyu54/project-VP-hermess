@@ -2976,7 +2976,7 @@ function getBerthingTimeEntries(reports) {
 function getTotalDistanceEntries(reports) {
   return reports
     .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ttl_dist)
-    .map(r => ({ ship: r.ship, voy: r.voy, ts: r.ts, dist: parseFloat(r.ttl_dist) || 0 }));
+    .map(r => ({ ship: r.ship, voy: r.voy, ts: r.ts, dist: parseFloat(r.ttl_dist) || 0, type: r.type }));
 }
 
 function getAllDowntimeEntries(reports) {
@@ -4427,11 +4427,11 @@ function ManagementReport({ reports, runningHours, user }) {
                   if (fYear) parts.push(fYear);
                   if (fMonth) parts.push(MONTHS[Number(fMonth)]);
                   downloadCSV(
-                    ["Nama Kapal","Voy","Tanggal","Distance (NM)"],
+                    ["Nama Kapal","Voy","Tanggal","Jenis Laporan","Distance (NM)"],
                     distanceDetailRows,
                     row => {
                       const d = new Date(row.ts);
-                      return [row.ship, row.voy, fmtDT(row.ts), row.dist.toFixed(1)];
+                      return [row.ship, row.voy, fmtDT(row.ts), row.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage", row.dist.toFixed(1)];
                     },
                     parts.join("_") + ".csv"
                   );
@@ -4448,6 +4448,7 @@ function ManagementReport({ reports, runningHours, user }) {
                   <th style={ss.th}>Nama Kapal</th>
                   <th style={ss.th}>Voy</th>
                   <th style={ss.th}>Tanggal</th>
+                  <th style={ss.th}>Jenis Laporan</th>
                   <th style={ss.th}>Distance (NM)</th>
                 </tr>
               </thead>
@@ -4458,6 +4459,7 @@ function ManagementReport({ reports, runningHours, user }) {
                       <td style={ss.td(i%2)}>{row.ship}</td>
                       <td style={ss.td(i%2)}>{row.voy}</td>
                       <td style={ss.td(i%2)}>{fmtDT(row.ts)}</td>
+                      <td style={ss.td(i%2)}>{row.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage"}</td>
                       <td style={{ ...ss.td(i%2), fontWeight:600, color:C.horizon }}>{row.dist.toFixed(1)}</td>
                     </tr>
                   );

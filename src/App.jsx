@@ -2325,6 +2325,8 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       SailingDaysByShip[ship] = Math.max(0, totalD - atPortD - anchD - dtD);
     } else {
       SailingDaysByShip[ship] = null;
+    }
+  });
 
   // Sailing days for prev month (for AE at Sea prev calculation)
   // Scaled proportionally from current sailing days by month length
@@ -2339,9 +2341,6 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       PrevSailingDaysByShip[ship] = Math.max(0, prevDaysInMonth * SailingDaysByShip[ship] / daysInSelectedMonth);
     } else {
       PrevSailingDaysByShip[ship] = null;
-    }
-  });
-
     }
   });
 

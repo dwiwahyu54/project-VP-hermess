@@ -4414,6 +4414,59 @@ function ManagementReport({ reports, runningHours, user }) {
       )}
       
 
+      {showDistanceDetail && (
+        <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <div style={{ fontSize:13, fontWeight:700 }}>📏 Rincian Jarak Tempuh (Total Distance)</div>
+            {distanceDetailRows.length > 0 && (
+              <button
+                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
+                onClick={() => {
+                  const parts = ["distance"];
+                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
+                  if (fYear) parts.push(fYear);
+                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
+                  downloadCSV(
+                    ["Nama Kapal","Voy","Tanggal","Distance (NM)"],
+                    distanceDetailRows,
+                    row => {
+                      const d = new Date(row.ts);
+                      return [row.ship, row.voy, fmtDT(row.ts), row.dist.toFixed(1)];
+                    },
+                    parts.join("_") + ".csv"
+                  );
+                }}
+              >⬇️ Download CSV</button>
+            )}
+          </div>
+          {distanceDetailRows.length === 0 ? (
+            <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
+          ) : (
+            <table className="voyage-main-table" style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+              <thead>
+                <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                  <th style={ss.th}>Nama Kapal</th>
+                  <th style={ss.th}>Voy</th>
+                  <th style={ss.th}>Tanggal</th>
+                  <th style={ss.th}>Distance (NM)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {distanceDetailRows.map((row, i) => {
+                  return (
+                    <tr key={i}>
+                      <td style={ss.td(i%2)}>{row.ship}</td>
+                      <td style={ss.td(i%2)}>{row.voy}</td>
+                      <td style={ss.td(i%2)}>{fmtDT(row.ts)}</td>
+                      <td style={{ ...ss.td(i%2), fontWeight:600, color:C.horizon }}>{row.dist.toFixed(1)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -4507,59 +4560,6 @@ export default function App() {
           } else {
             // bk_<tank> and rob_<tank> are already flat scalar values
             flatTanks[key] = val;
-      {showDistanceDetail && (
-        <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-            <div style={{ fontSize:13, fontWeight:700 }}>📏 Rincian Jarak Tempuh (Total Distance)</div>
-            {distanceDetailRows.length > 0 && (
-              <button
-                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
-                onClick={() => {
-                  const parts = ["distance"];
-                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
-                  if (fYear) parts.push(fYear);
-                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
-                  downloadCSV(
-                    ["Nama Kapal","Voy","Tanggal","Distance (NM)"],
-                    distanceDetailRows,
-                    row => {
-                      const d = new Date(row.ts);
-                      return [row.ship, row.voy, fmtDT(row.ts), row.dist.toFixed(1)];
-                    },
-                    parts.join("_") + ".csv"
-                  );
-                }}
-              >⬇️ Download CSV</button>
-            )}
-          </div>
-          {distanceDetailRows.length === 0 ? (
-            <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
-          ) : (
-            <table className="voyage-main-table" style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
-              <thead>
-                <tr style={{ borderBottom:`1px solid ${C.border}` }}>
-                  <th style={ss.th}>Nama Kapal</th>
-                  <th style={ss.th}>Voy</th>
-                  <th style={ss.th}>Tanggal</th>
-                  <th style={ss.th}>Distance (NM)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {distanceDetailRows.map((row, i) => {
-                  return (
-                    <tr key={i}>
-                      <td style={ss.td(i%2)}>{row.ship}</td>
-                      <td style={ss.td(i%2)}>{row.voy}</td>
-                      <td style={ss.td(i%2)}>{fmtDT(row.ts)}</td>
-                      <td style={{ ...ss.td(i%2), fontWeight:600, color:C.horizon }}>{row.dist.toFixed(1)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
           }
         });
         return {

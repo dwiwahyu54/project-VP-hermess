@@ -2325,6 +2325,23 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       SailingDaysByShip[ship] = Math.max(0, totalD - atPortD - anchD - dtD);
     } else {
       SailingDaysByShip[ship] = null;
+
+  // Sailing days for prev month (for AE at Sea prev calculation)
+  // Scaled proportionally from current sailing days by month length
+  const PrevSailingDaysByShip = {};
+  SHIPS.forEach(ship => {
+    const tYear = fYear ? Number(fYear) : new Date().getFullYear();
+    const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+    const prevMonth = tMonth - 1 < 0 ? 11 : tMonth - 1;
+    const prevYear = tMonth - 1 < 0 ? tYear - 1 : tYear;
+    const prevDaysInMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
+    if (SailingDaysByShip[ship] !== null && daysInSelectedMonth > 0) {
+      PrevSailingDaysByShip[ship] = Math.max(0, prevDaysInMonth * SailingDaysByShip[ship] / daysInSelectedMonth);
+    } else {
+      PrevSailingDaysByShip[ship] = null;
+    }
+  });
+
     }
   });
 
@@ -2728,8 +2745,8 @@ const handleDownloadExcel = async () => {
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{(TotalDistanceByShip[ship] || 0).toFixed(1)}</td>
                 
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeByShip[ship] != null ? ConsMeByShip[ship].toFixed(2) : "—"}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{SailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (SailingDaysByShip[ship] * FUEL_PARAMS[ship].ae).toFixed(2) : "—"}</td>
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeAePrevByShip[ship] != null && SailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (ConsMeAePrevByShip[ship] - (SailingDaysByShip[ship] * FUEL_PARAMS[ship].ae)).toFixed(2) : "—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{PrevSailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (PrevSailingDaysByShip[ship] * FUEL_PARAMS[ship].ae).toFixed(2) : "—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeAePrevByShip[ship] != null && PrevSailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (ConsMeAePrevByShip[ship] - (PrevSailingDaysByShip[ship] * FUEL_PARAMS[ship].ae)).toFixed(2) : "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeCurByShip[ship] != null ? ConsMeCurByShip[ship].toFixed(2) : "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{SailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (SailingDaysByShip[ship] * FUEL_PARAMS[ship].ae).toFixed(2) : "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{ConsMeAeCurByShip[ship] != null && SailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (ConsMeAeCurByShip[ship] - (SailingDaysByShip[ship] * FUEL_PARAMS[ship].ae)).toFixed(2) : "—"}</td>

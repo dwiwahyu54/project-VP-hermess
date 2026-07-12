@@ -3091,6 +3091,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
   const [consMeSearchMonth, setConsMeSearchMonth] = useState("");
   const [editingConsMe, setEditingConsMe] = useState(null);
   const editConsMeRef = useRef(null);
+  const editConsAeRef = useRef(null);
   const [showConsMeForm, setShowConsMeForm] = useState(false);
 
   // Load cons_me data on mount
@@ -3106,7 +3107,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
       if (error) throw error;
       const map = {};
       (data || []).forEach(row => {
-        map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "" };
+        map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "", cons_ae: row.cons_ae ?? "" };
       });
       console.log("cons_me map built:", map);
       setConsMe(map);
@@ -3139,7 +3140,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
   };
 
   // Cons ME handlers
-  const handleSaveConsMe = async (consMeVal) => {
+  const handleSaveConsMe = async (consMeVal, consAeVal) => {
     const key = `${consMeShip}|${consMeYear}|${consMeMonth}`;
     try {
       // Check if exists first
@@ -3161,17 +3162,17 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
         // Update existing
         const { error } = await supabase
           .from('cons_me')
-          .update({ cons_me: consMeVal === "" ? null : Number(consMeVal) })
+          .update({ cons_me: consMeVal === "" ? null : Number(consMeVal), cons_ae: consAeVal === "" ? null : Number(consAeVal) })
           .eq('id', existing.id);
         if (error) throw error;
       } else {
         // Insert new
         const { error } = await supabase
           .from('cons_me')
-          .insert({ ship: consMeShip, year: consMeYear, month: consMeMonth, cons_me: consMeVal === "" ? null : Number(consMeVal) });
+          .insert({ ship: consMeShip, year: consMeYear, month: consMeMonth, cons_me: consMeVal === "" ? null : Number(consMeVal), cons_ae: consAeVal === "" ? null : Number(consAeVal) });
         if (error) throw error;
       }
-      setConsMe(prev => ({ ...prev, [key]: { cons_me: consMeVal } }));
+      setConsMe(prev => ({ ...prev, [key]: { cons_me: consMeVal, cons_ae: consAeVal } }));
       setConsMeSaved(true);
       setTimeout(() => setConsMeSaved(false), 2000);
     } catch (err) { alert("Gagal menyimpan: " + err.message); }
@@ -3179,6 +3180,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
 
   const handleUpdateConsMe = async (key) => {
     const val = editConsMeRef.current?.value;
+    const aeVal = editConsAeRef.current?.value;
     const [ship, year, month] = key.split("|");
     try {
       const { data: existing, error: selectError } = await supabase
@@ -3198,11 +3200,11 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
       if (existing) {
         const { error } = await supabase
           .from('cons_me')
-          .update({ cons_me: val === "" ? null : Number(val) })
+          .update({ cons_me: val === "" ? null : Number(val), cons_ae: aeVal === "" ? null : Number(aeVal) })
           .eq('id', existing.id);
         if (error) throw error;
       }
-      setConsMe(prev => ({ ...prev, [key]: { cons_me: val } }));
+      setConsMe(prev => ({ ...prev, [key]: { cons_me: val, cons_ae: aeVal } }));
       setEditingConsMe(null);
     } catch (err) { alert("Gagal update: " + err.message); }
   };
@@ -3472,8 +3474,26 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
                   defaultValue={consMe[`${consMeShip}|${consMeYear}|${consMeMonth}`]?.cons_me || ""}
                   onKeyDown={e => {
                     if (e.key === "Enter") {
-                      const val = e.target.value;
-                      handleSaveConsMe(val);
+                      const meVal = e.target.value;
+                      const aeInput = e.target.parentElement.parentElement.querySelector('input.cons-ae-input');
+                      handleSaveConsMe(meVal, aeInput?.value || "");
+                    }
+                  }}
+                />
+              </div>
+              <div style={ss.fg}>
+                <label style={ss.lbl}>Cons AE (KL)</label>
+                <input
+                  style={ss.inp}
+                  className="cons-ae-input"
+                  type="text"
+                  placeholder="0"
+                  defaultValue={consMe[`${consMeShip}|${consMeYear}|${consMeMonth}`]?.cons_ae || ""}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      const aeVal = e.target.value;
+                      const meInput = e.target.parentElement.parentElement.querySelector('input');
+                      handleSaveConsMe(meInput?.value || "", aeVal);
                     }
                   }}
                 />
@@ -3481,10 +3501,12 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
               <div style={ss.fg}>
                 <label style={ss.lbl}>&nbsp;</label>
                 <button style={ss.btn} onClick={e => {
-                  const input = e.target.parentElement.parentElement.querySelector('input');
-                  handleSaveConsMe(input.value);
+                  const inputs = e.target.parentElement.parentElement.querySelectorAll('input');
+                  const meVal = inputs[0]?.value || "";
+                  const aeVal = inputs[1]?.value || "";
+                  handleSaveConsMe(meVal, aeVal);
                 }}>
-                  💾 Simpan Cons ME
+                  💾 Simpan
                 </button>
               </div>
             </div>
@@ -3517,12 +3539,12 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
             <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto" }}>
               <table className="voyage-main-table" style={{ ...ss.tbl, minWidth:400 }}>
                 <thead>
-                  <tr>{["Kapal","Tahun","Bulan","Cons ME (KL)","Aksi"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr>
+                  <tr>{["Kapal","Tahun","Bulan","Cons ME (KL)","Cons AE (KL)","Aksi"].map(h=><th key={h} style={ss.th}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   {(() => {
                     const filteredEntries = Object.entries(consMe)
-                      .filter(([k,v]) => v.cons_me)
+                      .filter(([k,v]) => v.cons_me || v.cons_ae)
                       .filter(([k,v]) => {
                         const [ship, year, month] = k.split("|");
                         if (user?.ship && ship !== user.ship) return false;
@@ -3536,7 +3558,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
                     const displayEntries = filteredEntries.slice(0, 10);
 
                     if (filteredEntries.length === 0) {
-                      return <tr><td colSpan={5} style={{ ...ss.td(false), textAlign:"center", color:C.muted, padding:24 }}>Tidak ada data Cons ME</td></tr>;
+                      return <tr><td colSpan={6} style={{ ...ss.td(false), textAlign:"center", color:C.muted, padding:24 }}>Tidak ada data Cons ME</td></tr>;
                     }
 
                     return displayEntries.map(([k,v],i) => {
@@ -3553,6 +3575,9 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
                                 <input style={{ ...ss.inp, padding:"4px 8px", width:80 }} type="text" defaultValue={v.cons_me} ref={editConsMeRef}/>
                               </td>
                               <td style={ss.td(i%2)}>
+                                <input style={{ ...ss.inp, padding:"4px 8px", width:80 }} type="text" defaultValue={v.cons_ae} ref={editConsAeRef}/>
+                              </td>
+                              <td style={ss.td(i%2)}>
                                 <button style={{ ...ss.btnSm(true), padding:"4px 8px" }} onClick={()=>handleUpdateConsMe(k)}>✓</button>
                                 <button style={{ ...ss.btnSm(false), padding:"4px 8px", marginLeft:4 }} onClick={()=>setEditingConsMe(null)}>✕</button>
                               </td>
@@ -3560,8 +3585,9 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
                           ) : (
                             <>
                               <td style={{ ...ss.td(i%2), color:C.accent, fontWeight:600 }}>{v.cons_me || "—"} KL</td>
+                              <td style={{ ...ss.td(i%2), color:C.accent, fontWeight:600 }}>{v.cons_ae || "—"} KL</td>
                               <td style={ss.td(i%2)}>
-                                <button style={{ ...ss.btnSm(true), padding:"4px 8px" }} onClick={()=>{setEditingConsMe(k);editConsMeRef.current.value=v.cons_me||"";}}>✏️</button>
+                                <button style={{ ...ss.btnSm(true), padding:"4px 8px" }} onClick={()=>{setEditingConsMe(k);editConsMeRef.current.value=v.cons_me||"";editConsAeRef.current.value=v.cons_ae||"";}}>✏️</button>
                                 <button style={{ ...ss.btnG, padding:"4px 8px", marginLeft:4, color:C.red }} onClick={()=>handleDeleteConsMe(k)}>🗑️</button>
                               </td>
                             </>
@@ -3575,7 +3601,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
             </div>
             {(() => {
               const totalFiltered = Object.entries(consMe)
-                .filter(([k,v]) => v.cons_me)
+                .filter(([k,v]) => v.cons_me || v.cons_ae)
                 .filter(([k,v]) => {
                   const [ship, year, month] = k.split("|");
                   const matchShip = !consMeSearch || ship.toLowerCase().includes(consMeSearch.toLowerCase());
@@ -4410,7 +4436,7 @@ const loadConsMe = async () => {
     if (error) throw error;
     const map = {};
     (data || []).forEach(row => {
-      map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "" };
+      map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "", cons_ae: row.cons_ae ?? "" };
     });
     setConsMe(map);
   } catch (err) { console.error("Error loading cons_me:", err); }

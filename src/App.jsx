@@ -2642,6 +2642,7 @@ const handleDownloadExcel = async () => {
     { name: "Anchorage Time", data: anchData, widths: [18, 12, 8, 22, 22, 16] },
     { name: "Berthing Time", data: berthData, widths: [18, 12, 8, 22, 22, 16] },
     { name: "Downtime Report", data: dtData, widths: [18, 20, 20, 14, 30, 18] },
+    { name: "Rincian Total Distance", data: distDetailData, widths: [18, 10, 20, 22, 16] },
   ];
   
   await downloadMultiSheetExcel(sheets, `MMM_Report_${tYear}_${curLabel}.xlsx`);

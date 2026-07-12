@@ -2365,6 +2365,7 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     const val = consMe?.[curKey]?.cons_me;
     ConsMeCurByShip[ship] = val != null && val !== "" ? parseFloat(val) : null;
 
+  });
   // Per-ship Cons AE from consMe state for AE at Port calculation
   const ConsMeAePrevByShip = {};
   const ConsMeAeCurByShip = {};
@@ -2381,10 +2382,7 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     ConsMeAeCurByShip[ship] = curVal != null && curVal !== "" ? parseFloat(curVal) : null;
   });
 
-  });
-
-
-
+  // Per-ship Cons AE from consMe state for AE at Port calculation
   // Helper functions for AVG Speed (same as Management Report)
   const getFirstArrivalBeforeNoon = (ship, voy, year, month, day) => {
     const candidates = reports.filter(r =>
@@ -2742,7 +2740,7 @@ const handleDownloadExcel = async () => {
                
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{"—"}</td>
                 
-                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}{{ConsMeAePrevByShip[ship] != null && SailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (ConsMeAePrevByShip[ship] - (SailingDaysByShip[ship] * FUEL_PARAMS[ship].ae)).toFixed(2) : "—"}</td>
+                <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedPrevByShip[ship] || "—"}</td>
                 <td style={{ ...ss.td(idx%2), border:"1px solid rgba(45,120,185,0.28)", textAlign:"center" }}>{AvgSpeedByShip[ship] || "—"}</td> 
               </tr>
             ))}

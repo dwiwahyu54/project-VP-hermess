@@ -2097,16 +2097,7 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
   const [fShip, setFShip] = useState("");
   const [fYear, setFYear] = useState(String(currentYear)); // Default tahun ini
   const [fMonth, setFMonth] = useState(String(currentMonth)); // Default bulan ini
-  const [showDistanceDetail, setShowDistanceDetail] = useState(false);
-  // Distance detail rows for clickable Total Distance panel
-  const distanceDetailRows = getTotalDistanceEntries(reports)
-    .filter(e => !fShip || e.ship === fShip)
-    .filter(e => {
-      const d = new Date(e.ts);
-      const yearOk  = !fYear  || d.getFullYear() === Number(fYear);
-      const monthOk = !fMonth || d.getMonth() === Number(fMonth);
-      return yearOk && monthOk;
-    });
+
 
   const computed = (({ fShip, fYear, fMonth, voys, reports }) => {
     const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -2800,59 +2791,6 @@ const handleDownloadExcel = async () => {
         * Default: {new Date().getFullYear()} / {MONTHS[new Date().getMonth()]}. Kolom At Port & Sailing membutuhkan data Running Hours ME per kapal. Kolom Jarak Laut = Total Distance. AVG Speed menggunakan data dari Arrival Report.
       </div>
       
-      {showDistanceDetail && (
-        <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-            <div style={{ fontSize:13, fontWeight:700 }}>📏 Rincian Jarak Tempuh (Total Distance)</div>
-            {distanceDetailRows.length > 0 && (
-              <button
-                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
-                onClick={() => {
-                  const parts = ["distance"];
-                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
-                  if (fYear) parts.push(fYear);
-                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
-                  downloadCSV(
-                    ["Nama Kapal","Voy","Tanggal","Distance (NM)"],
-                    distanceDetailRows,
-                    row => {
-                      const d = new Date(row.ts);
-                      return [row.ship, row.voy, fmtDT(row.ts), row.dist.toFixed(1)];
-                    },
-                    parts.join("_") + ".csv"
-                  );
-                }}
-              >⬇️ Download CSV</button>
-            )}
-          </div>
-          {distanceDetailRows.length === 0 ? (
-            <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
-          ) : (
-            <table className="voyage-main-table" style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
-              <thead>
-                <tr style={{ borderBottom:`1px solid ${C.border}` }}>
-                  <th style={ss.th}>Nama Kapal</th>
-                  <th style={ss.th}>Voy</th>
-                  <th style={ss.th}>Tanggal</th>
-                  <th style={ss.th}>Distance (NM)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {distanceDetailRows.map((row, i) => {
-                  return (
-                    <tr key={i}>
-                      <td style={ss.td(i%2)}>{row.ship}</td>
-                      <td style={ss.td(i%2)}>{row.voy}</td>
-                      <td style={ss.td(i%2)}>{fmtDT(row.ts)}</td>
-                      <td style={{ ...ss.td(i%2), fontWeight:600, color:C.horizon }}>{row.dist.toFixed(1)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -3748,6 +3686,7 @@ function ManagementReport({ reports, runningHours, user }) {
   const [showAnchorageDetail, setShowAnchorageDetail] = useState(false);
   const [showBerthingDetail, setShowBerthingDetail] = useState(false);
   const [showAvgSpeedDetail, setShowAvgSpeedDetail] = useState(false);
+  const [showDistanceDetail, setShowDistanceDetail] = useState(false);
 
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
   const years = Array.from(new Set(reports.map(r => new Date(r.ts).getFullYear()))).sort((a,b)=>b-a);
@@ -3847,6 +3786,12 @@ function ManagementReport({ reports, runningHours, user }) {
 
   let totalDistance = 0;
   const distanceEntries = getTotalDistanceEntries(reports).filter(e => !fShip || e.ship === fShip);
+  const distanceDetailRows = distanceEntries.filter(e => {
+    const d = new Date(e.ts);
+    const yearOk  = !fYear  || d.getFullYear() === Number(fYear);
+    const monthOk = !fMonth || d.getMonth() === Number(fMonth);
+    return yearOk && monthOk;
+  });
   const voysForDist = computeVoyages(reports).filter(v => !fShip || v.ship === fShip);
 
   const getNoonOnLastDayOfMonth = (ship, voy, year, month) => {
@@ -4297,10 +4242,13 @@ function ManagementReport({ reports, runningHours, user }) {
           <div style={{ fontSize:10, color:C.muted }}>Berthing Time</div>
           <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Berth FWE → Next Voyage BOSV {showBerthingDetail ? "▲" : "▼"}</div>
         </div>
-        <div style={{ background:C.bg3, border:`1px solid ${C.green}30`, borderTop:`3px solid ${C.green}`, borderRadius:12, padding:"16px 18px" }}>
+        <div
+          style={{ background:C.bg3, border:`1px solid ${C.green}30`, borderTop:`3px solid ${C.green}`, borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
+          onClick={() => setShowDistanceDetail(s => !s)}
+        >
           <div style={{ fontSize:22, fontWeight:700, color:C.green, marginBottom:4 }}>{totalDistance.toFixed(1)} NM</div>
           <div style={{ fontSize:10, color:C.muted }}>Total Distance</div>
-          <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Sum Total Dist Run (Arr Berth/Anc)</div>
+          <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Sum Total Dist Run (Arr Berth/Anc) {showDistanceDetail ? "▲" : "▼"}</div>
         </div>
         <div style={{ background:C.bg3, border:`1px solid ${C.sea}30`, borderTop:`3px solid ${C.sea}`, borderRadius:12, padding:"16px 18px" }}>
           <div style={{ fontSize:22, fontWeight:700, color:C.sea, marginBottom:4 }}>{atPortDays != null ? atPortDays.toFixed(2)+" hari" : "—"}</div>
@@ -4562,6 +4510,59 @@ const loadConsMe = async () => {
           } else {
             // bk_<tank> and rob_<tank> are already flat scalar values
             flatTanks[key] = val;
+      {showDistanceDetail && (
+        <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <div style={{ fontSize:13, fontWeight:700 }}>📏 Rincian Jarak Tempuh (Total Distance)</div>
+            {distanceDetailRows.length > 0 && (
+              <button
+                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
+                onClick={() => {
+                  const parts = ["distance"];
+                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
+                  if (fYear) parts.push(fYear);
+                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
+                  downloadCSV(
+                    ["Nama Kapal","Voy","Tanggal","Distance (NM)"],
+                    distanceDetailRows,
+                    row => {
+                      const d = new Date(row.ts);
+                      return [row.ship, row.voy, fmtDT(row.ts), row.dist.toFixed(1)];
+                    },
+                    parts.join("_") + ".csv"
+                  );
+                }}
+              >⬇️ Download CSV</button>
+            )}
+          </div>
+          {distanceDetailRows.length === 0 ? (
+            <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
+          ) : (
+            <table className="voyage-main-table" style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+              <thead>
+                <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                  <th style={ss.th}>Nama Kapal</th>
+                  <th style={ss.th}>Voy</th>
+                  <th style={ss.th}>Tanggal</th>
+                  <th style={ss.th}>Distance (NM)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {distanceDetailRows.map((row, i) => {
+                  return (
+                    <tr key={i}>
+                      <td style={ss.td(i%2)}>{row.ship}</td>
+                      <td style={ss.td(i%2)}>{row.voy}</td>
+                      <td style={ss.td(i%2)}>{fmtDT(row.ts)}</td>
+                      <td style={{ ...ss.td(i%2), fontWeight:600, color:C.horizon }}>{row.dist.toFixed(1)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
           }
         });
         return {

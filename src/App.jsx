@@ -2645,6 +2645,19 @@ const handleDownloadExcel = async () => {
     { name: "Rincian Total Distance", data: distDetailData, widths: [18, 10, 20, 22, 16] },
   ];
   
+
+  // SHEET 5: RINCIAN TOTAL DISTANCE
+  const distDetailHeaders = ["Nama Kapal", "Voy", "Tanggal", "Jenis Laporan", "Distance (NM)"];
+  const distDetailData = [distDetailHeaders];
+  const distEntries = getTotalDistanceEntries(reports);
+  distEntries.forEach(e => {
+    const d = new Date(e.ts);
+    const yearOk = !fYear || d.getFullYear() === Number(fYear);
+    const monthOk = !fMonth || d.getMonth() === Number(fMonth);
+    if (yearOk && monthOk) {
+      distDetailData.push([e.ship, e.voy, fmtDateForCSV(e.ts), e.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage", e.dist.toFixed(1)]);
+    }
+  });
   await downloadMultiSheetExcel(sheets, `MMM_Report_${tYear}_${curLabel}.xlsx`);
 };
 

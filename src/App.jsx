@@ -2770,8 +2770,10 @@ const handleDownloadExcel = async () => {
               <td style={ss.td(1)}>{(() => { const vals = Object.values(AtPortDaysByShip).filter(v => v !== null); return vals.length > 0 ? vals.reduce((s,v)=>s+v,0).toFixed(2) : "—"; })()}</td>
               <td style={ss.td(1)}>{Object.values(DowntimeDaysByShip).reduce((s,h)=>s+h,0).toFixed(2)}</td>
               <td style={ss.td(1)}>{daysInSelectedMonth}</td>
-              <td style={ss.td(1)}>{Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)}</td>
-              
+              <td style={{ ...ss.td(1), cursor:"pointer", color:C.horizon, fontWeight:700, textDecoration:"underline dotted" }}
+                onClick={() => setShowDistanceDetail(!showDistanceDetail)}>
+                {Object.values(TotalDistanceByShip).reduce((s,h)=>s+h,0).toFixed(1)} {showDistanceDetail ? "▲" : "▼"}
+              </td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
               <td style={ss.td(1)}></td>
@@ -3681,6 +3683,7 @@ function ManagementReport({ reports, runningHours, user }) {
   const [showDetail, setShowDetail] = useState(false);
   const [showAnchorageDetail, setShowAnchorageDetail] = useState(false);
   const [showBerthingDetail, setShowBerthingDetail] = useState(false);
+  const [showDistanceDetail, setShowDistanceDetail] = useState(false);
   const [showAvgSpeedDetail, setShowAvgSpeedDetail] = useState(false);
 
   const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -3742,6 +3745,7 @@ function ManagementReport({ reports, runningHours, user }) {
   // --- Berthing Time (shift_berth/arr_berth FWE -> next voyage BOSV, same ship) ---
   const berthingEntries = getBerthingTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
   let totalBerthingH = 0;
+  
   const berthingDetailRows = [];
   berthingEntries.forEach(e => {
     const segs = splitByMonth(e.t0, e.t1);
@@ -3780,6 +3784,12 @@ function ManagementReport({ reports, runningHours, user }) {
 
   let totalDistance = 0;
   const distanceEntries = getTotalDistanceEntries(reports).filter(e => !fShip || e.ship === fShip);
+  const distanceDetailRows = distanceEntries.filter(e => {
+    const d = new Date(e.ts);
+    const yearOk  = !fYear  || d.getFullYear() === Number(fYear);
+    const monthOk = !fMonth || d.getMonth() === Number(fMonth);
+    return yearOk && monthOk;
+  });
   const voysForDist = computeVoyages(reports).filter(v => !fShip || v.ship === fShip);
 
   const getNoonOnLastDayOfMonth = (ship, voy, year, month) => {
@@ -4392,6 +4402,60 @@ function ManagementReport({ reports, runningHours, user }) {
                       <td style={ss.td(i%2)}>{fmtDT(row.t0)}</td>
                       <td style={ss.td(i%2)}>{fmtDT(row.t1)}</td>
                       <td style={{ ...ss.td(i%2), fontWeight:600, color:C.horizon }}>{(row.hours/24).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+      
+      {showDistanceDetail && (
+        <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <div style={{ fontSize:13, fontWeight:700 }}>📏 Rincian Jarak Tempuh (Total Distance)</div>
+            {distanceDetailRows.length > 0 && (
+              <button
+                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
+                onClick={() => {
+                  const parts = ["distance"];
+                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
+                  if (fYear) parts.push(fYear);
+                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
+                  downloadCSV(
+                    ["Nama Kapal","Voy","Tanggal","Distance (NM)"],
+                    distanceDetailRows,
+                    row => {
+                      const d = new Date(row.ts);
+                      return [row.ship, row.voy, fmtDT(row.ts), row.dist.toFixed(1)];
+                    },
+                    parts.join("_") + ".csv"
+                  );
+                }}
+              >⬇️ Download CSV</button>
+            )}
+          </div>
+          {distanceDetailRows.length === 0 ? (
+            <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
+          ) : (
+            <table className="voyage-main-table" style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+              <thead>
+                <tr style={{ borderBottom:`1px solid ${C.border}` }}>
+                  <th style={ss.th}>Nama Kapal</th>
+                  <th style={ss.th}>Voy</th>
+                  <th style={ss.th}>Tanggal</th>
+                  <th style={ss.th}>Distance (NM)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {distanceDetailRows.map((row, i) => {
+                  return (
+                    <tr key={i}>
+                      <td style={ss.td(i%2)}>{row.ship}</td>
+                      <td style={ss.td(i%2)}>{row.voy}</td>
+                      <td style={ss.td(i%2)}>{fmtDT(row.ts)}</td>
+                      <td style={{ ...ss.td(i%2), fontWeight:600, color:C.horizon }}>{row.dist.toFixed(1)}</td>
                     </tr>
                   );
                 })}

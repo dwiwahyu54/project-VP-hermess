@@ -1938,7 +1938,7 @@ function getShipCurrentStatus(ship, voys) {
       // Check if ship later shifted to anchor
       const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
       if (shiftAnchorReport) {
-        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("FWE")) || shiftAnchorReport.ts;
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts;
         berthH = diffH(fweArrBerth, fweShiftAnchor);
         anchH = diffH(fweShiftAnchor, now);
       } else {
@@ -1954,7 +1954,7 @@ function getShipCurrentStatus(ship, voys) {
       // Check if ship later shifted to anchor
       const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
       if (shiftAnchorReport) {
-        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("FWE")) || shiftAnchorReport.ts;
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts;
         berthH = diffH(arrBerthReport.ts, fweShiftAnchor);
         anchH = diffH(fweShiftAnchor, now);
       } else {
@@ -1969,7 +1969,7 @@ function getShipCurrentStatus(ship, voys) {
       // Check if ship later shifted to anchor again
       const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
       if (shiftAnchorReport) {
-        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("FWE")) || shiftAnchorReport.ts;
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts;
         berthH = diffH(fweShift, fweShiftAnchor);
         anchH += diffH(fweShiftAnchor, now);
       } else {
@@ -1992,7 +1992,7 @@ function getShipCurrentStatus(ship, voys) {
       const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
       if (shiftAnchorReport) {
         // Ship shifted from berth to anchor
-        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("FWE")) || shiftAnchorReport.ts;
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts;
         berthH = diffH(fweShift, fweShiftAnchor);
         anchH = diffH(fweShiftAnchor, now);
       } else {

@@ -2775,6 +2775,10 @@ const handleDownloadExcel = async () => {
               <td style={{ padding:"9px 11px", border:`1px solid ${C.border}`, background:"rgba(255,255,255,0.015)", textAlign:"center" }}></td>
               <td style={{ padding:"9px 11px", border:`1px solid ${C.border}`, background:"rgba(255,255,255,0.015)", textAlign:"center" }}></td>
               <td style={{ padding:"9px 11px", border:`1px solid ${C.border}`, background:"rgba(255,255,255,0.015)", textAlign:"center" }}></td>
+              <td style={{ padding:"9px 11px", border:`1px solid ${C.border}`, background:"rgba(255,255,255,0.015)", textAlign:"center" }}></td>
+              <td style={{ padding:"9px 11px", border:`1px solid ${C.border}`, background:"rgba(255,255,255,0.015)", textAlign:"center" }}></td>
+              <td style={{ padding:"9px 11px", border:`1px solid ${C.border}`, background:"rgba(255,255,255,0.015)", textAlign:"center" }}></td>
+              <td style={{ padding:"9px 11px", border:`1px solid ${C.border}`, background:"rgba(255,255,255,0.015)", textAlign:"center" }}></td>
             </tr>
           </tfoot>
         </table>

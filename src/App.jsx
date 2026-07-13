@@ -1746,7 +1746,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               {F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}
               {F("Wind Bf","wbf")}
             </div>
-            {F("Sea State","sea",["Calm","Slight","Moderate","Rough","Very Rough"])}
+            {F("Sea State","sea",["Calm","Smooth","Slight","Moderate","Rough","Very Rough"])}
           </>
         )}
 
@@ -1766,7 +1766,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
               {F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}
               {F("Wind Bf","wbf")}
             </div>
-            {F("Sea State","sea",["Calm Sea","Slight Sea","Moderate Sea","Rough Sea","Very Rough Sea"])}
+            {F("Sea State","sea",["Calm Sea","Smooth Sea","Slight Sea","Moderate Sea","Rough Sea","Very Rough Sea"])}
           </>
         )}
 
@@ -1792,7 +1792,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             <div className="voyage-row2" style={ss.row3}>{F("Dist Run (NM) - noon->noon","drun")}{F("Total Dist Run (NM)","ttl_dist")}{F("Dist Remain (NM)","drem")}</div>
             <hr style={ss.divider}/>
             <div className="voyage-row3" style={ss.row3}>{F("Weather","wx",["Fine","Cloudy","Rain","Fog","Storm"])}{F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}{F("Wind Bf","wbf")}</div>
-            {F("Sea State","sea",["Calm sea ","Slight sea","Moderate sea","Rough sea","Very Rough sea"])}
+            {F("Sea State","sea",["Calm sea ","Smooth Sea","Slight sea","Moderate sea","Rough sea","Very Rough sea"])}
           </>
         )}
 

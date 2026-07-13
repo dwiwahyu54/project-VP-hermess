@@ -4108,63 +4108,6 @@ function ManagementReport({ reports, runningHours, user }) {
       </div>
 
       <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap", alignItems:"center" }}>
-        <button
-          style={{ ...ss.btn, background:C.accent, color:"#fff", fontSize:9, padding:"5px 14px", fontWeight:700, letterSpacing:"0.04em" }}
-          onClick={() => {
-            const MONTHS_ID = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-            const tYear = fYear ? Number(fYear) : new Date().getFullYear();
-            const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
-            const prevMonth = tMonth - 1 < 0 ? 11 : tMonth - 1;
-            const curLabel = MONTHS_ID[tMonth];
-            const prevLabel = MONTHS_ID[prevMonth];
-
-            const s1 = { name:"Vessel Activity", data:[
-              ["No","Nama Kapal","Sailing (Hari)","Anchorage (Hari)","At Port (Hari)","Downtime (Hari)","Total (Hari)","Laut (NM)","ME "+prevLabel,"AE at Sea "+prevLabel,"AE at Port "+prevLabel,"ME "+curLabel,"AE at Sea "+curLabel,"AE at Port "+curLabel,"Avg/Miles "+curLabel,"Avg/Hari "+curLabel,"Target Parameter ME/Day","Realisasi Pemakaian ME/Day","AVG Speed "+prevLabel,"AVG Speed "+curLabel],
-              ...SHIPS.map((ship, idx) => [
-                idx+1, ship,
-                SailingDaysByShip[ship] !== null ? SailingDaysByShip[ship].toFixed(2) : "",
-                (AnchorageDaysByShip[ship] || 0).toFixed(2),
-                AtPortDaysByShip[ship] !== null ? AtPortDaysByShip[ship].toFixed(2) : "",
-                (DowntimeDaysByShip[ship] || 0).toFixed(2),
-                daysInSelectedMonth,
-                (TotalDistanceByShip[ship] || 0).toFixed(1),
-                "", "", "", "", "", "",  // 6 kolom ME/AE (prev & cur)
-                "", "", "", "", // 4 kolom tambahan (Avg/Miles, Avg/Hari, Target, Realisasi)
-                AvgSpeedPrevByShip[ship] || "",
-                AvgSpeedByShip[ship] || ""
-              ]),
-              [
-                "TOTAL","",
-                (() => { const v=Object.values(SailingDaysByShip).filter(x=>x!==null); return v.length?v.reduce((s,x)=>s+x,0).toFixed(2):""; })(),
-                Object.values(AnchorageDaysByShip).reduce((s,x)=>s+x,0).toFixed(2),
-                (() => { const v=Object.values(AtPortDaysByShip).filter(x=>x!==null); return v.length?v.reduce((s,x)=>s+x,0).toFixed(2):""; })(),
-                Object.values(DowntimeDaysByShip).reduce((s,x)=>s+x,0).toFixed(2),
-                daysInSelectedMonth,
-                Object.values(TotalDistanceByShip).reduce((s,x)=>s+x,0).toFixed(1),
-                "", "", "", "", "", "",  // 6 kosong
-                "", "", "", "", // 4 kosong
-                "", "" // AVG Speed kosong untuk total
-              ]
-            ], widths:[5,20,14,14,14,14,10,12,12,14,14,12,14,14,12,12,14,14,14,14] };
-
-            const s2 = { name:"Anchorage Time", data:[
-              ["Nama Kapal","Bulan","Tahun","Anchorage (EOSV Arrival)","Berthing (FWE)","Anchorage Time (hari)"],
-              ...(getAnchorageTimeEntries(reports)||[]).flatMap(e => splitByMonth(e.t0, e.t1).map(seg => (!fYear||seg.year===Number(fYear)) && (!fMonth||seg.month===Number(fMonth)) ? [e.ship, MONTHS_ID[seg.month]||"", seg.year, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (seg.hours/24).toFixed(2)] : null).filter(Boolean))
-            ], widths:[18,12,8,22,22,16] };
-
-            const s3 = { name:"Downtime Report", data:[
-              ["Nama Kapal","Start Downtime","Finish Downtime","Duration (days)","Reason","Category"],
-              ...(getAllDowntimeEntries(reports)||[]).flatMap(e => splitByMonth(e.t0, e.t1).map(seg => (!fYear||seg.year===Number(fYear)) && (!fMonth||seg.month===Number(fMonth)) ? [e.ship, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (seg.hours/24).toFixed(2), e.reason||"", e.category||""] : null).filter(Boolean))
-            ], widths:[18,20,20,14,30,18] };
-
-            const s4 = { name:"Berthing Time", data:[
-              ["Nama Kapal","Bulan","Tahun","Berthing (FWE)","Departure (BOSV)","Berthing Time (hari)"],
-              ...(getBerthingTimeEntries(reports)||[]).flatMap(e => splitByMonth(e.t0, e.t1).map(seg => (!fYear||seg.year===Number(fYear)) && (!fMonth||seg.month===Number(fMonth)) ? [e.ship, MONTHS_ID[seg.month]||"", seg.year, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (seg.hours/24).toFixed(2)] : null).filter(Boolean))
-            ], widths:[18,12,8,22,22,16] };
-
-            downloadMultiSheetExcel([s1,s2,s3,s4], `management-report_${tYear}_${(fMonth!==""?MONTHS_ID[Number(fMonth)]:"All").replace(/\s+/g,"-")}.xlsx`);
-          }}
-        >EXPORT XLSX</button>
       </div>
 
       <div

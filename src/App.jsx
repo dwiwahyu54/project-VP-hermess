@@ -2003,6 +2003,21 @@ function getShipCurrentStatus(ship, voys) {
     } else {
     }
 
+    // Final check: sort reports by time, use latest to determine anch/berth status
+    if (lastVoy) {
+      const sortedReports = [...(lastVoy.list || [])].sort((a,b) => new Date(b.ts) - new Date(a.ts));
+      const latest = sortedReports[0];
+      if (latest && (latest.type === "shift_anchor" || latest.type === "arr_anchor")) {
+        const anchorTs = getEventVal(latest, evKey("Drop Anchor")) || getEventVal(latest, evKey("SBE/EOSV")) || latest.ts;
+        anchH = diffH(anchorTs, new Date().toISOString());
+        berthH = 0;
+      } else if (latest && (latest.type === "arr_berth" || latest.type === "shift_berth")) {
+        const berthTs = getEventVal(latest, evKey("FWE")) || latest.ts;
+        berthH = diffH(berthTs, new Date().toISOString());
+        anchH = 0;
+      }
+    }
+
     return {
       status: "IN PORT",
       sailingH: null,

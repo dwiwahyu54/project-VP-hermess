@@ -1935,7 +1935,15 @@ function getShipCurrentStatus(ship, voys) {
 
     if (arrBerthReport && fweArrBerth) {
       // Berth arrival: FWE (arr_berth) → current time
-      berthH = diffH(fweArrBerth, now);
+      // Check if ship later shifted to anchor
+      const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
+      if (shiftAnchorReport) {
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("FWE")) || shiftAnchorReport.ts;
+        berthH = diffH(fweArrBerth, fweShiftAnchor);
+        anchH = diffH(fweShiftAnchor, now);
+      } else {
+        berthH = diffH(fweArrBerth, now);
+      }
 
     } else if (shiftBerthReport && fweShift) {
       // Berth shift: FWE (shift_berth) → current time
@@ -1943,14 +1951,30 @@ function getShipCurrentStatus(ship, voys) {
 
     } else if (arrBerthReport && !fweArrBerth) {
       // arr_berth exists but FWE not filled yet - treat as in-port berthing start from report time
-      berthH = diffH(arrBerthReport.ts, now);
+      // Check if ship later shifted to anchor
+      const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
+      if (shiftAnchorReport) {
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("FWE")) || shiftAnchorReport.ts;
+        berthH = diffH(arrBerthReport.ts, fweShiftAnchor);
+        anchH = diffH(fweShiftAnchor, now);
+      } else {
+        berthH = diffH(arrBerthReport.ts, now);
+      }
 
     } else if (arrAnchReport && shiftBerthReport && fweShift) {
       // Anchorage: SBE/EOSV (arr_anchor) → FWE (shift_berth)
       const sbeEosv = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
       anchH = diffH(sbeEosv, fweShift);
       // Berthing: FWE (shift_berth) → current time
-      berthH = diffH(fweShift, now);
+      // Check if ship later shifted to anchor again
+      const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
+      if (shiftAnchorReport) {
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("FWE")) || shiftAnchorReport.ts;
+        berthH = diffH(fweShift, fweShiftAnchor);
+        anchH += diffH(fweShiftAnchor, now);
+      } else {
+        berthH = diffH(fweShift, now);
+      }
 
     } else if (arrAnchReport && !shiftBerthReport) {
       // Still at anchor (arr_anchor exists but no shift_berth yet)
@@ -1964,8 +1988,17 @@ function getShipCurrentStatus(ship, voys) {
 
     } else if (shiftBerthReport && fweShift) {
       // Direct shift without arr_anchor (e.g., shift_bb) - berthing only
-      const endTime = lastVoy.eosv || now;
-      berthH = diffH(fweShift, endTime);
+      // But check if ship later shifted to anchor again
+      const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
+      if (shiftAnchorReport) {
+        // Ship shifted from berth to anchor
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("FWE")) || shiftAnchorReport.ts;
+        berthH = diffH(fweShift, fweShiftAnchor);
+        anchH = diffH(fweShiftAnchor, now);
+      } else {
+        const endTime = lastVoy.eosv || now;
+        berthH = diffH(fweShift, endTime);
+      }
 
     } else {
     }

@@ -721,6 +721,7 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
               <Ship size={20} />
             </div>
             <div>
+              {/* NC page title */}
               <h1 className="text-lg font-semibold tracking-tight leading-tight">
                 Database NC
               </h1>

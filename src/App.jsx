@@ -285,7 +285,7 @@ function getActivePortDest(ship, voy, reports, currentType) {
   // For arrival/shift, the port should be the departure's destination (where they arrived to)
   const arrivalShiftTypes = ["arr_berth","arr_anchor","shift_anchor","shift_berth"];
   const isArrShift = arrivalShiftTypes.includes(currentType);
-  return { port: isArrShift && dest ? dest : port, dest: isArrShift && dest ? dest : dest };
+  return { port: isArrShift && dest ? dest : port, dest: isArrShift ? "" : dest };
 }
 
 // Get active (underway) voyage for a given ship from reports list

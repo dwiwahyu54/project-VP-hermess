@@ -1334,7 +1334,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
   // Those two are always left free for manual entry — see fields UI below
   useEffect(() => {
     if (ship && activeVoy) {
-      const alwaysFree = type === "departure" || type === "shift_anchor";
+      const alwaysFree = type === "departure" || type === "shift_anchor" || type === "arr_berth" || type === "shift_berth";
       if (!alwaysFree) {
         fref.current.voy = activeVoy;
         const pd = getActivePortDest(ship, activeVoy, allReports || [], type);
@@ -1607,7 +1607,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             );
           })()}
           {(() => {
-            const isAlwaysEditablePD = ["departure","shift_anchor"].includes(type);
+            const isAlwaysEditablePD = ["departure","shift_anchor","arr_berth","shift_berth"].includes(type);
             const pd = isAlwaysEditablePD ? {port:"",dest:""} : getActivePortDest(ship, activeVoy, allReports||[], type);
 
             let isPortReadonly = !isAlwaysEditablePD;

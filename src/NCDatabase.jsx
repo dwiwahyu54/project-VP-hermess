@@ -712,7 +712,29 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
         style={{ borderBottom: `1px solid ${T.border}`, background: T.panel2 }}
         className="px-6 py-5"
       >
-        <div className="flex items-center justify-end flex-wrap gap-4">
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div
+              style={{ background: T.amberDim, color: T.amber }}
+              className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+            >
+              <Ship size={20} />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight leading-tight">
+                Database NC
+              </h1>
+              <p style={{ color: T.textMuted }} className="text-xs mt-0.5">
+                {lastUpdated
+                  ? `Terakhir update ${new Date(lastUpdated).toLocaleString("id-ID", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}`
+                  : "Belum ada update"}
+              </p>
+            </div>
+          </div>
+
           <div className="flex gap-2">
             {!shipScope && (
               <>

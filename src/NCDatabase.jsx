@@ -1039,13 +1039,6 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
         </div>
       </div>
 
-      <div
-        style={{ borderTop: `1px solid ${T.border}`, color: T.textMuted }}
-        className="px-6 py-3 flex items-center gap-1.5 text-[11px]"
-      >
-        <Info size={12} />
-        Data tersimpan di Supabase (tabel nc_records). Upload Excel: No. baru = insert, No. sama + data beda = update, No. sama + data identik = skip.
-      </div>
     </div>
   );
 }

@@ -51,7 +51,6 @@ const RefreshCw = ic("↻");
 const AlertTriangle = ic("⚠");
 const CheckCircle2 = ic("✓");
 const Loader2 = ic("◌");
-const FileSpreadsheet = ic("📄");
 const Info = ic("ℹ");
 
 /* =========================================================
@@ -311,7 +310,6 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploadState, setUploadState] = useState(null); // {status, message, inserted, updated}
-  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
   const [search, setSearch] = useState("");
@@ -554,12 +552,6 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
     [persist]
   );
 
-  const onDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
-  };
 
   // scoped dataset for ship accounts
   const scopedRecords = useMemo(() => {
@@ -806,27 +798,6 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
           </button>
         </div>
       )}
-
-      {/* Drop zone (visible always, subtle) */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={onDrop}
-        style={{
-          border: `1.5px dashed ${dragOver ? T.amber : T.border}`,
-          background: dragOver ? T.amberDim : "transparent",
-          margin: "16px 24px 0",
-        }}
-        className="rounded-lg px-4 py-3 flex items-center gap-2 text-xs transition-colors"
-      >
-        <FileSpreadsheet size={14} style={{ color: T.textMuted }} />
-        <span style={{ color: T.textMuted }}>
-          Drag & drop file Excel entry baru di sini untuk update database (upsert berdasarkan No. NC), atau pakai tombol Upload di atas.
-        </span>
-      </div>
 
       {/* Toolbar: search full width, all filters below */}
       <div className="px-6 pt-4 pb-2">

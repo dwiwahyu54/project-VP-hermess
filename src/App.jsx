@@ -679,8 +679,8 @@ const ss = {
   layout: { display:"flex", minHeight:"calc(100vh - 54px)" },
   nav:    { width:200, background:C.panel2, borderRight:`1px solid ${C.border}`, padding:"12px 6px", flexShrink:0 },
   main:   { flex:1, padding:"16px 14px", overflowX:"auto" },
-  bottomNav: { position:"fixed", bottom:0, left:0, right:0, minHeight:68, background:C.panel3, borderTop:`1px solid ${C.border}`, display:"flex", alignItems:"stretch", zIndex:200, backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", overflowX:"auto", WebkitOverflowScrolling:"touch", padding:"6px 8px calc(6px + env(safe-area-inset-bottom))", gap:4, boxShadow:"0 -8px 28px rgba(0,0,0,0.18)" },
-  bottomNavItem: (a) => ({ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, background:a?(C.accentDim||"rgba(56,189,248,0.12)"):"transparent", border:a?`1px solid ${C.border}`:"1px solid transparent", borderRadius:14, color:a?C.accent:C.muted, fontWeight:a?700:500, cursor:"pointer", padding:"8px 10px", minWidth:64, flex:"0 0 auto", fontSize:9, letterSpacing:"0.01em", transition:"0.15s ease" }),
+  bottomNav: { position:"fixed", bottom:0, left:0, right:0, height:"calc(58px + env(safe-area-inset-bottom))", background:C.panel3, borderTop:`1px solid ${C.border}`, display:"flex", alignItems:"stretch", justifyContent:"space-between", zIndex:200, backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", padding:"4px 4px calc(4px + env(safe-area-inset-bottom))", gap:2, boxShadow:"0 -6px 20px rgba(0,0,0,0.16)", overflow:"hidden", boxSizing:"border-box" },
+  bottomNavItem: (a) => ({ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2, flex:"1 1 0", minWidth:0, maxWidth:"100%", background:a?(C.accentDim||"rgba(56,189,248,0.14)"):"transparent", border:"none", borderRadius:10, color:a?C.accent:C.muted, fontWeight:a?700:500, cursor:"pointer", padding:"6px 2px", fontSize:9, lineHeight:1.05, transition:"0.15s ease", WebkitTapHighlightColor:"transparent" }),
   card:   (b) => ({ background:C.bg3, border:`1px solid ${b||C.border}`, borderRadius:12, padding:"16px 18px", marginBottom:12 }),
   inp:    { width:"100%", padding:"7px 10px", background:C.bg3, border:`1px solid ${C.border}`, borderRadius:7, color:C.text, fontSize:12, outline:"none", boxSizing:"border-box" },
   sel:    { width:"100%", padding:"7px 10px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:7, color:C.text, fontSize:12, outline:"none", cursor:"pointer", boxSizing:"border-box" },
@@ -4709,7 +4709,7 @@ export default function App() {
             </button>
           </nav>
         )}
-        <main style={{ ...ss.main, paddingBottom: isMobile ? 92 : 22, ...(page==="nc" ? { padding: isMobile ? "6px 6px 96px" : 0 } : {}), ...(isMobile && page!=="nc" ? { paddingLeft:12, paddingRight:12 } : {}) }}>
+        <main style={{ ...ss.main, paddingBottom: isMobile ? 72 : 22, ...(page==="nc" ? { padding: isMobile ? "6px 6px 76px" : 0 } : {}), ...(isMobile && page!=="nc" ? { paddingLeft:12, paddingRight:12 } : {}) }}>
           {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user} runningHours={runningHours} consMe={consMe}/>}
           {page==="new"       && <ReportForm onSave={addReport} onCancel={() => setPage("dashboard")} allReports={visibleReports} user={user}/>}
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
@@ -4723,18 +4723,19 @@ export default function App() {
       {isMobile && (
         <nav style={ss.bottomNav} aria-label="Menu mobile">
           {voyageNav.map(n => {
-            const short = ({ dashboard:"Home", new:"Buat", log:"Laporan", rh:"RH/Cons", mgmt:"Mgmt" })[n.id] || n.l;
+            // Short labels so 6 items fit evenly without truncation
+            const short = ({ dashboard:"Home", new:"Buat", log:"Log", rh:"RH", mgmt:"Mgmt" })[n.id] || n.l;
             const active = page===n.id || (n.id==="log" && page==="edit");
             return (
               <button key={n.id} type="button" style={ss.bottomNavItem(active)} onClick={() => setPage(n.id)}>
-                <span style={{ fontSize:18, lineHeight:1 }}>{n.i}</span>
-                <span style={{ fontSize:9, whiteSpace:"nowrap" }}>{short}</span>
+                <span style={{ fontSize:16, lineHeight:1, display:"block" }}>{n.i}</span>
+                <span style={{ fontSize:9, lineHeight:1.1, display:"block", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{short}</span>
               </button>
             );
           })}
           <button type="button" style={ss.bottomNavItem(page==="nc")} onClick={() => setPage("nc")}>
-            <span style={{ fontSize:18, lineHeight:1 }}>🗄️</span>
-            <span style={{ fontSize:9, whiteSpace:"nowrap" }}>NC</span>
+            <span style={{ fontSize:16, lineHeight:1, display:"block" }}>🗄️</span>
+            <span style={{ fontSize:9, lineHeight:1.1, display:"block", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>NC</span>
           </button>
         </nav>
       )}

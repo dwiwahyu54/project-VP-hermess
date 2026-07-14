@@ -456,8 +456,7 @@ function buildWA(r) {
         return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
       }
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
-      // For Noon and other types: try to get port/dest from active voyage's departure
-      return `Voyage: ${r.voy || "-"} | Port: ${r.port || r.dest || getActivePortDest(r.ship, r.voy, reports||[], r.type).port || "-"} ${r.dest ? "→ " + r.dest : getActivePortDest(r.ship, r.voy, reports||[], r.type).dest ? "→ " + getActivePortDest(r.ship, r.voy, reports||[], r.type).dest : ""}`;
+      return `Voyage: ${r.voy || "-"} | Port: ${r.port || r.dest || "-"} ${r.dest ? "→ " + r.dest : ""}`;
     })(),
     `Date/Time: ${fmtDT(r.ts)}`,
     `Master: ${r.master || "-"}`,
@@ -1610,12 +1609,12 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
           {(() => {
             const isPortLocked = type === "noon";
             const isDestLocked = type === "noon";
-            const pd = type === "noon" ? {port:"",dest:""} : getActivePortDest(ship, activeVoy, allReports||[], type);
+            const pd = getActivePortDest(ship, activeVoy, allReports||[], type);
 
             let isPortReadonly = isPortLocked;
             let isDestReadonly = isDestLocked;
-            let displayPort = type === "noon" ? (fref.current.port || "") : (pd.port || fref.current.port || "");
-            let displayDest = type === "noon" ? (fref.current.destination || "") : (pd.dest || fref.current.destination || "");
+            let displayPort = pd.port || fref.current.port || "";
+            let displayDest = pd.dest || fref.current.destination || "";
 
             if (!isEdit) {
               if (type !== "noon") {

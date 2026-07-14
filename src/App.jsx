@@ -479,8 +479,8 @@ function buildWA(r, allReports) {
   if (r.dist_go)   L.push(`Dist To Go: ${r.dist_go} NM`);
   if (r.eta_dest)  L.push(`ETA: ${fmtDT(r.eta_dest)}`);
   if (r.tug)       L.push(`Tug Used: ${r.tug}`);
-  if (r.lat) {
-    let posText = `Position: ${r.lat} / ${r.lon}`;
+  if (r.lat || r.lon || r.posisi) {
+    let posText = `Position: ${r.lat || "—"} / ${r.lon || "—"}`;
     if (r.type === "noon" && r.posisi) {
       posText += ` (${r.posisi})`;
     }

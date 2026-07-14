@@ -456,7 +456,8 @@ function buildWA(r) {
         return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
       }
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
-      return `Voyage: ${r.voy || "-"} | Port: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
+      // For Noon and other types: try to get port/dest from active voyage's departure
+      return `Voyage: ${r.voy || "-"} | Port: ${r.port || r.dest || getActivePortDest(r.ship, r.voy, reports||[], r.type).port || "-"} ${r.dest ? "→ " + r.dest : getActivePortDest(r.ship, r.voy, reports||[], r.type).dest ? "→ " + getActivePortDest(r.ship, r.voy, reports||[], r.type).dest : ""}`;
     })(),
     `Date/Time: ${fmtDT(r.ts)}`,
     `Master: ${r.master || "-"}`,

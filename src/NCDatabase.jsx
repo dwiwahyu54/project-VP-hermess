@@ -800,7 +800,7 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
       )}
 
       {/* Toolbar: search full width, all filters below */}
-      <div className="px-6 pt-4 pb-2">
+      <div className="px-3 sm:px-6 pt-3 sm:pt-4 pb-2">
         <div
           style={{ background: T.panel, border: `1px solid ${T.border}` }}
           className="flex items-center gap-2 px-3 py-2 rounded-lg w-full"
@@ -821,24 +821,55 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
         </div>
       </div>
 
-      <div className="px-6 pb-3 flex flex-wrap gap-2 items-center">
+      {/* Mobile: 2-col grid; desktop: wrap row */}
+      <div className="px-3 sm:px-6 pb-3 grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-stretch sm:items-center">
         <Select
           value={shipScope || vesselFilter}
           onChange={(v) => { if (!shipScope) setVesselFilter(v); }}
           options={shipScope ? [shipScope] : ["All", ...VESSELS]}
           label={shipScope ? "Kapal (akun ini)" : "Kapal"}
           T={T}
+          className="sm:w-auto sm:min-w-[140px]"
         />
-        <Select value={statusFilter} onChange={setStatusFilter} options={["All", "OPEN", "CLOSED"]} label="Status" T={T} />
-        <Select value={riskFilter} onChange={setRiskFilter} options={["All", ...RISK_ORDER]} label="Risk" T={T} />
-        <Select value={categoryFilter} onChange={setCategoryFilter} options={["All", ...categoryOptions]} label="Kategori" T={T} />
-        <Select value={yearFilter} onChange={setYearFilter} options={["All", ...yearOptions]} label="Tahun Audit" T={T} />
+        <Select
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={["All", "OPEN", "CLOSED"]}
+          label="Status"
+          T={T}
+          className="sm:w-auto sm:min-w-[110px]"
+        />
+        <Select
+          value={riskFilter}
+          onChange={setRiskFilter}
+          options={["All", ...RISK_ORDER]}
+          label="Risk"
+          T={T}
+          className="sm:w-auto sm:min-w-[120px]"
+        />
+        <Select
+          value={categoryFilter}
+          onChange={setCategoryFilter}
+          options={["All", ...categoryOptions]}
+          label="Kategori"
+          T={T}
+          className="sm:w-auto sm:min-w-[140px]"
+        />
+        <Select
+          value={yearFilter}
+          onChange={setYearFilter}
+          options={["All", ...yearOptions]}
+          label="Tahun Audit"
+          T={T}
+          className="sm:w-auto sm:min-w-[140px]"
+        />
         <Select
           value={roundFilter}
           onChange={setRoundFilter}
           options={["All", ...roundOptions]}
           label="Audit Ke-"
           T={T}
+          className="sm:w-auto sm:min-w-[120px]"
         />
         {(vesselFilter !== "All" ||
           statusFilter !== "All" ||
@@ -857,8 +888,8 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
               setRoundFilter("All");
               setSearch("");
             }}
-            style={{ color: T.textMuted, border: `1px solid ${T.border}` }}
-            className="text-xs px-2.5 py-2 rounded-lg flex items-center gap-1"
+            style={{ color: T.textMuted, border: `1px solid ${T.border}`, background: T.panel }}
+            className="text-xs px-2.5 py-2.5 rounded-xl flex items-center justify-center gap-1 col-span-2 sm:col-span-1 sm:w-auto"
           >
             <X size={12} />
             Reset filter
@@ -1027,7 +1058,7 @@ function StatCard({ label, value, color, bg, border }) {
   );
 }
 
-function Select({ value, onChange, options, label, T }) {
+function Select({ value, onChange, options, label, T, className = "" }) {
   return (
     <select
       value={value}
@@ -1037,7 +1068,7 @@ function Select({ value, onChange, options, label, T }) {
         border: `1px solid ${T.border}`,
         color: T.textPrimary,
       }}
-      className="text-sm px-3 py-2 rounded-lg outline-none"
+      className={`text-sm px-3 py-2.5 rounded-xl outline-none w-full min-w-0 ${className}`}
     >
       {options.map((o) => (
         <option key={o} value={o} style={{ background: T.panel2 }}>

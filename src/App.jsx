@@ -443,7 +443,16 @@ function hasCompletedFWE(list) {
   );
 }
 
-function buildWA(r) {
+function buildWA(r, allReports) {
+  // Helper: try to get port/dest from voyage departure if report doesn't have it
+  const getVoyagePort = () => {
+    if (r.port || r.dest) return null;
+    if (!allReports || !r.ship || !r.voy) return null;
+    const dep = (allReports||[]).filter(x => x.ship===r.ship && x.voy===r.voy && ["departure","dep_anchor","shift_anchor"].includes(x.type))
+      .sort((a,b)=>new Date(b.ts||0)-new Date(a.ts||0))[0];
+    if (!dep) return null;
+    return { port: dep.port || "", dest: dep.dest || dep.destination || "" };
+  };
   const rt = RT.find(t => t.id === r.type);
   const L = [
     `*${rt?.label?.toUpperCase()} — MV ${r.ship}*`,
@@ -456,7 +465,10 @@ function buildWA(r) {
         return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
       }
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
-      return `Voyage: ${r.voy || "-"} | Port: ${r.port || r.dest || "-"} ${r.dest ? "→ " + r.dest : ""}`;
+      const voyPort = getVoyagePort();
+      const port = r.port || r.dest || voyPort?.port || "-";
+      const dest = r.dest || voyPort?.dest || "";
+      return `Voyage: ${r.voy || "-"} | Port: ${port}${dest ? " → " + dest : ""}`;
     })(),
     `Date/Time: ${fmtDT(r.ts)}`,
     `Master: ${r.master || "-"}`,
@@ -1494,7 +1506,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
         cargoRows: fref.current.cargoRows || [],
       };
 
-      setWaMsg(buildWA(r));
+      setWaMsg(buildWA(r, allReports));
       setDone(true);
       if (isEdit) onUpdate(r); else onSave(r);
     } catch (err) {

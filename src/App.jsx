@@ -2922,11 +2922,11 @@ function ReportLog({ reports, onView, user }) {
 }
 
 // --- MODAL --------------------------------------------------------------------
-function Modal({ report, onClose, onEdit, onDelete }) {
+function Modal({ report, onClose, onEdit, onDelete, allReports }) {
   const [confirming, setConfirming] = useState(false);
   if (!report) return null;
   const rt  = RT.find(t => t.id === report.type);
-  const msg = buildWA(report);
+  const msg = buildWA(report, allReports);
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.9)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }} onClick={onClose}>
       <div style={{ ...ss.card(), width:"100%", maxWidth:520, maxHeight:"85vh", overflowY:"auto", marginBottom:0 }} onClick={e=>e.stopPropagation()}>
@@ -4638,7 +4638,7 @@ export default function App() {
           {page==="mgmt"      && <ManagementReport reports={visibleReports} runningHours={runningHours} user={user}/>}
         </main>
       </div>
-      {viewing && <Modal report={viewing} onClose={() => setViewing(null)} onEdit={() => startEdit(viewing)} onDelete={deleteReport}/>}
+      {viewing && <Modal report={viewing} onClose={() => setViewing(null)} onEdit={() => startEdit(viewing)} onDelete={deleteReport} allReports={visibleReports}/>}
       {isMobile && (
         <nav style={ss.bottomNav}>
           {nav.map(n => (

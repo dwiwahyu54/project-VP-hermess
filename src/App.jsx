@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase";
+import NCDatabase from "./NCDatabase";
 // --- XLSX FOR EXPORT ---
 const XLSX_CDN = "https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js";
 let XLSX = null;
@@ -678,8 +679,8 @@ const ss = {
   layout: { display:"flex", minHeight:"calc(100vh - 54px)" },
   nav:    { width:200, background:C.panel2, borderRight:`1px solid ${C.border}`, padding:"12px 6px", flexShrink:0 },
   main:   { flex:1, padding:"16px 14px", overflowX:"auto" },
-  bottomNav: { position:"fixed", bottom:0, left:0, right:0, height:64, background:C.panel3, borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"space-around", alignItems:"center", zIndex:200, backdropFilter:"blur(10px)" },
-  bottomNavItem: (a) => ({ display:"flex", flexDirection:"column", alignItems:"center", gap:3, background:"transparent", border:"none", color:a?C.accent:C.muted, fontWeight:a?700:400, cursor:"pointer", padding:"6px 10px", flex:1 }),
+  bottomNav: { position:"fixed", bottom:0, left:0, right:0, minHeight:68, background:C.panel3, borderTop:`1px solid ${C.border}`, display:"flex", alignItems:"stretch", zIndex:200, backdropFilter:"blur(14px)", WebkitBackdropFilter:"blur(14px)", overflowX:"auto", WebkitOverflowScrolling:"touch", padding:"6px 8px calc(6px + env(safe-area-inset-bottom))", gap:4, boxShadow:"0 -8px 28px rgba(0,0,0,0.18)" },
+  bottomNavItem: (a) => ({ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, background:a?(C.accentDim||"rgba(56,189,248,0.12)"):"transparent", border:a?`1px solid ${C.border}`:"1px solid transparent", borderRadius:14, color:a?C.accent:C.muted, fontWeight:a?700:500, cursor:"pointer", padding:"8px 10px", minWidth:64, flex:"0 0 auto", fontSize:9, letterSpacing:"0.01em", transition:"0.15s ease" }),
   card:   (b) => ({ background:C.bg3, border:`1px solid ${b||C.border}`, borderRadius:12, padding:"16px 18px", marginBottom:12 }),
   inp:    { width:"100%", padding:"7px 10px", background:C.bg3, border:`1px solid ${C.border}`, borderRadius:7, color:C.text, fontSize:12, outline:"none", boxSizing:"border-box" },
   sel:    { width:"100%", padding:"7px 10px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:7, color:C.text, fontSize:12, outline:"none", cursor:"pointer", boxSizing:"border-box" },
@@ -818,10 +819,22 @@ function Login({ onLogin }) {
   return (
     <div style={ss.login}>
       <div style={{ ...ss.card(), width:320, margin:0, boxShadow:"0 24px 80px rgba(0,0,0,0.6)" }}>
-        <div style={{ textAlign:"center", marginBottom:22 }}>
-                    <img src="/mmm-logo.png" alt="MMM" style={{ width:120, height:60, marginBottom:6 }} onError={(e)=>{e.target.style.display='none'}}/>
-          <div style={{ fontSize:17, fontWeight:700, color:C.accent }}>Voyage Report Portal</div>
-          <div style={{ fontSize:12, color:C.muted, marginTop:2 }}>PT Mentari Mas Multimoda</div>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", marginBottom:22 }}>
+          <img
+            src="/mmm-logo.png"
+            alt="MMM"
+            style={{
+              width: 120,
+              height: "auto",
+              maxHeight: 72,
+              objectFit: "contain",
+              display: "block",
+              margin: "0 auto 10px",
+            }}
+            onError={(e)=>{ e.target.style.display="none"; }}
+          />
+          <div style={{ fontSize:17, fontWeight:700, color:C.accent, width:"100%", textAlign:"center" }}>Voyage Report Portal</div>
+          <div style={{ fontSize:12, color:C.muted, marginTop:2, width:"100%", textAlign:"center" }}>PT Mentari Mas Multimoda</div>
         </div>
         <div style={ss.fg}><label style={ss.lbl}>Email</label>
           <input ref={eRef} style={ss.inp} type="email" name="email" autoComplete="email" defaultValue="" onKeyDown={e=>e.key==="Enter"&&go()}/></div>
@@ -4471,6 +4484,7 @@ export default function App() {
   const [runningHours, setRunningHours] = useState({}); // key: "ship|year|month" -> {me, ae}
   const [consMe, setConsMe] = useState({}); // key: "ship|year|month" -> {cons_me}
   const [theme, setTheme] = useState("light");
+  const [vpOpen, setVpOpen] = useState(true); // Voyage Portal submenu open
 
   // Check Supabase session on mount
   useEffect(() => {
@@ -4568,13 +4582,15 @@ export default function App() {
 
   if (!user) return (<><GlobalStyles/><Login onLogin={setUser}/></>);
 
-  const nav = [
+  const voyageNav = [
     { id:"dashboard", l:"Dashboard",     i:"📊" },
     { id:"new",       l:"Buat Laporan",  i:"📝" },
     { id:"log",       l:"Semua Laporan", i:"📋" },
     { id:"rh",        l:"RH & Cons ME",  i:"⛽" },
     { id:"mgmt",      l:"Management Report", i:"📈" },
   ];
+  const voyagePageIds = ["dashboard","new","edit","log","rh","mgmt"];
+  const isVoyagePage = voyagePageIds.includes(page);
 
   const addReport = async (r) => { await loadReports(); setPage("dashboard"); };
   const updateReport = async (r) => { await loadReports(); setPage("log"); };
@@ -4593,14 +4609,47 @@ export default function App() {
     setUser(null);
   };
 
+  const goVoyage = (id) => {
+    setVpOpen(true);
+    setPage(id);
+  };
+
+  const sideNav = {
+    ...ss.nav,
+    width: 230,
+    overflowY: "auto",
+  };
+  const groupBtn = (active) => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: 8,
+    padding: "10px 11px",
+    margin: "2px 0",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 700,
+    color: active ? C.accent : C.text,
+    background: active ? C.accent + "14" : "transparent",
+    border: active ? `1px solid ${C.accent}40` : "1px solid transparent",
+  });
+  const subBtn = (active) => ({
+    ...ss.navItem(active),
+    padding: "8px 11px 8px 28px",
+    fontSize: 12,
+    margin: "1px 0",
+  });
+
   return (
     <div style={ss.app}>
       <GlobalStyles/>
       <header style={ss.hdr}>
         <div style={{ display:"flex", alignItems:"center", gap:11 }}>
-                    <img src="/mmm-logo.png" alt="MMM" style={{ width:34, height:24 }} onError={(e)=>{e.target.style.display='none'}}/>
+          <img src="/mmm-logo.png" alt="MMM" style={{ width:34, height:24 }} onError={(e)=>{e.target.style.display='none'}}/>
           <div>
-            <div style={{ fontSize:14, fontWeight:700, color:C.accent }}>Voyage Report Portal</div>
+            <div style={{ fontSize:14, fontWeight:700, color:C.accent }}>FLEET- QSS</div>
             <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.07em", display: isMobile ? "none" : "block" }}>PT Mentari Mas Multimoda</div>
           </div>
         </div>
@@ -4620,33 +4669,73 @@ export default function App() {
       </header>
       <div style={ss.layout}>
         {!isMobile && (
-          <nav style={ss.nav}>
+          <nav style={sideNav}>
             <div style={{ fontSize:9, fontWeight:700, color:C.muted, letterSpacing:"0.1em", textTransform:"uppercase", padding:"4px 12px 8px" }}>Menu</div>
-            {nav.map(n => (
-              <button key={n.id} style={ss.navItem(page===n.id)} onClick={() => setPage(n.id)}>
+
+            {/* Voyage Portal group */}
+            <button
+              type="button"
+              style={groupBtn(isVoyagePage)}
+              onClick={() => {
+                if (!isVoyagePage) {
+                  setVpOpen(true);
+                  setPage("dashboard");
+                } else {
+                  setVpOpen(v => !v);
+                }
+              }}
+            >
+              <span style={{ display:"flex", alignItems:"center", gap:9 }}>
+                <span>🚢</span><span>Voyage Portal</span>
+              </span>
+              <span style={{ fontSize:10, color:C.muted }}>{vpOpen || isVoyagePage ? "▾" : "▸"}</span>
+            </button>
+
+            {(vpOpen || isVoyagePage) && voyageNav.map(n => (
+              <button key={n.id} type="button" style={subBtn(page===n.id || (n.id==="log" && page==="edit"))} onClick={() => goVoyage(n.id)}>
                 <span>{n.i}</span><span>{n.l}</span>
               </button>
             ))}
+
+            {/* Database NC */}
+            <button
+              type="button"
+              style={groupBtn(page==="nc")}
+              onClick={() => setPage("nc")}
+            >
+              <span style={{ display:"flex", alignItems:"center", gap:9 }}>
+                <span>🗄️</span><span>Database NC</span>
+              </span>
+            </button>
           </nav>
         )}
-        <main style={{ ...ss.main, paddingBottom: isMobile ? 80 : 22 }}>
+        <main style={{ ...ss.main, paddingBottom: isMobile ? 92 : 22, ...(page==="nc" ? { padding: isMobile ? "6px 6px 96px" : 0 } : {}), ...(isMobile && page!=="nc" ? { paddingLeft:12, paddingRight:12 } : {}) }}>
           {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user} runningHours={runningHours} consMe={consMe}/>}
           {page==="new"       && <ReportForm onSave={addReport} onCancel={() => setPage("dashboard")} allReports={visibleReports} user={user}/>}
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
           {page==="log"       && <ReportLog reports={visibleReports} onView={setViewing} user={user}/>}
           {page==="rh"        && <RHConsPage runningHours={runningHours} setRunningHours={setRunningHours} user={user} consMe={consMe} setConsMe={setConsMe}/>}
           {page==="mgmt"      && <ManagementReport reports={visibleReports} runningHours={runningHours} user={user}/>}
+          {page==="nc"        && <NCDatabase theme={theme} user={user} />}
         </main>
       </div>
       {viewing && <Modal report={viewing} onClose={() => setViewing(null)} onEdit={() => startEdit(viewing)} onDelete={deleteReport} allReports={visibleReports}/>}
       {isMobile && (
-        <nav style={ss.bottomNav}>
-          {nav.map(n => (
-            <button key={n.id} style={ss.bottomNavItem(page===n.id)} onClick={() => setPage(n.id)}>
-              <span style={{ fontSize:18 }}>{n.i}</span>
-              <span style={{ fontSize:10 }}>{n.l}</span>
-            </button>
-          ))}
+        <nav style={ss.bottomNav} aria-label="Menu mobile">
+          {voyageNav.map(n => {
+            const short = ({ dashboard:"Home", new:"Buat", log:"Laporan", rh:"RH/Cons", mgmt:"Mgmt" })[n.id] || n.l;
+            const active = page===n.id || (n.id==="log" && page==="edit");
+            return (
+              <button key={n.id} type="button" style={ss.bottomNavItem(active)} onClick={() => setPage(n.id)}>
+                <span style={{ fontSize:18, lineHeight:1 }}>{n.i}</span>
+                <span style={{ fontSize:9, whiteSpace:"nowrap" }}>{short}</span>
+              </button>
+            );
+          })}
+          <button type="button" style={ss.bottomNavItem(page==="nc")} onClick={() => setPage("nc")}>
+            <span style={{ fontSize:18, lineHeight:1 }}>🗄️</span>
+            <span style={{ fontSize:9, whiteSpace:"nowrap" }}>NC</span>
+          </button>
         </nav>
       )}
     </div>

@@ -1,21 +1,8 @@
-* {
-  box-sizing: border-box;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: 'Inter', 'DM Sans', 'Segoe UI', sans-serif;
-}
-
-#root {
-  min-height: 100vh;
-}
-
-input, select, textarea, button {
-  font-family: inherit;
-}
-
-/* Remove default number input spinners look (optional) */
-input[type="number"] {
-  -moz-appearance: textfield;
+/* Voyage Portal base */
+html, body, #root {
+  min-height: 100%;
 }

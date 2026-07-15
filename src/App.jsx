@@ -332,7 +332,7 @@ function initForm() {
     type:"departure", ship:"", voy:"", ts:nowStr(), master:"", port:"", rmk:"",
     dist_go:"", eta_dest:"", tug:"",dest:"",posisi:"",ttl_avg_spd:"",
     ttl_dist:"", steam:"", avg_spd:"", man_dist:"", man_time:"",
-    lat:"", lon:"", spd:"", crs:"", drun:"", drem:"",
+    lat:"", lon:"", spd:"", crs:"", drun:"", drem:"", steam_nn:"",
     wx:"Fine", wdir:"N", wbf:"3", sea:"Slight",
     t0:nowStr(), t1:nowStr(), cat:"Engine Breakdown", desc:"", action:"",
     ballast:"", gm:"", drf:"", drm:"", dra:"",
@@ -488,18 +488,27 @@ function buildWA(r, allReports) {
     L.push(posText);
     }
   if (r.ttl_dist) {
-    // Khusus Noon Report: hanya tampilkan Total Dist
     if (r.type === "noon") {
-      L.push(`Total Dist: ${r.ttl_dist} NM`,);
+      let distLine = `Total Dist: ${r.ttl_dist} NM`;
+      if (r.steam) distLine += ` | Total Steaming: ${r.steam}`;
+      L.push(distLine);
     } else {
-      // Laporan lain: tampilkan Total Dist, Steaming, dan Avg Speed jika ada
       let distLine = `Total Dist: ${r.ttl_dist} NM`;
       if (r.steam) distLine += ` | Steaming: ${r.steam}`;
       if (r.avg_spd) distLine += ` | Avg: ${r.avg_spd} kts`;
       L.push(distLine);
     }
   }
-  if (r.drun)      L.push(`Dist Run (24H): ${r.drun} NM | Remaining: ${r.drem} NM`);
+  if (r.drun || r.drem) {
+    let runLine = "";
+    if (r.drun) runLine += `Dist Run (noon->noon): ${r.drun} NM`;
+    if (r.drem != null && r.drem !== "") runLine += (runLine ? ` | Remaining: ${r.drem} NM` : `Remaining: ${r.drem} NM`);
+    if (runLine) L.push(runLine);
+  }
+  if (r.type === "noon" && (r.steam_nn || r.steam)) {
+    // steam already on total dist line; steam_nn separate
+    if (r.steam_nn) L.push(`Steaming (noon->noon): ${r.steam_nn}`);
+  }
   if (r.spd || r.total_avg_spd) {
     let speedLine = "";
     if (r.spd) speedLine += `Avg Speed: ${r.spd} kts`;
@@ -1443,6 +1452,10 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
     // Build events and tanks data
     const events = {};
     evtKeys.forEach(k => { const key = evKey(k); if (fref.current[key]) events[key] = fref.current[key]; });
+    // Noon steaming (noon->noon) stored in events JSON (no extra DB column needed)
+    if (fref.current.steam_nn != null && String(fref.current.steam_nn).trim() !== "") {
+      events.steam_nn = String(fref.current.steam_nn).trim();
+    }
     const tanks = {};
     TANKS.forEach(t => {
       const k = tankKey(t);
@@ -1467,7 +1480,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
       eta_dest: fref.current.eta_dest,
       tug: fref.current.tug ? parseFloat(fref.current.tug) : null,
       ttl_dist: fref.current.ttl_dist ? parseFloat(fref.current.ttl_dist) : null,
-      steam: fref.current.steam,
+      steam: fref.current.steam != null && String(fref.current.steam).trim() !== "" ? String(fref.current.steam).trim() : null,
       avg_spd: fref.current.avg_spd ? parseFloat(fref.current.avg_spd) : null,
       ttl_avg_spd: fref.current.ttl_avg_spd ? parseFloat(fref.current.ttl_avg_spd) : null,
   crs: fref.current.crs,
@@ -1816,6 +1829,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             {F("Posisi","posisi",null,null,"Laut Jawa / Berthing Surabaya / Rede Surabaya")}
             <div className="voyage-row3" style={ss.row3}>{F("Avg Speed (kts)","spd")}{F("Total Avg Speed (kts)","ttl_avg_spd")}{F("Course (°)","crs")}{F("ETA","eta_dest",null,"datetime-local",null)}</div>
             <div className="voyage-row2" style={ss.row3}>{F("Dist Run (NM) - noon->noon","drun")}{F("Total Dist Run (NM)","ttl_dist")}{F("Dist Remain (NM)","drem")}</div>
+            <div className="voyage-row2" style={ss.row2}>{F("Total Steaming Time","steam",null,null,"e.g. 120:35")}{F("Steaming Time (noon->noon)","steam_nn",null,null,"e.g. 24:10")}</div>
             <hr style={ss.divider}/>
             <div className="voyage-row3" style={ss.row3}>{F("Weather","wx",["Fine","Cloudy","Rain","Fog","Storm"])}{F("Wind Dir","wdir",["N","NE","E","SE","S","SW","W","NW"])}{F("Wind Bf","wbf")}</div>
             {F("Sea State","sea",["Calm sea ","Smooth Sea","Slight sea","Moderate sea","Rough sea","Very Rough sea"])}

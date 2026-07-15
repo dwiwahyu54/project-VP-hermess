@@ -4540,15 +4540,22 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
   });
   const voysForDist = computeVoyages(reports).filter(v => !fShip || v.ship === fShip);
 
+  // Crossing-month estimate: prefer noon on calendar last day of month;
+  // if none (e.g. noon only on 30th while month ends 31st), use LAST noon of that month.
   const getNoonOnLastDayOfMonth = (ship, voy, year, month) => {
     const lastDay = new Date(year, month + 1, 0).getDate();
-    const candidates = reports.filter(r =>
+    const inMonth = reports.filter(r =>
       r.type === "noon" && r.ship === ship && r.voy === voy &&
-      (() => { const d = new Date(r.ts); return d.getFullYear()===year && d.getMonth()===month && d.getDate()===lastDay; })()
+      (() => {
+        const d = new Date(r.ts);
+        return d.getFullYear() === year && d.getMonth() === month;
+      })()
     );
-    if (candidates.length === 0) return null;
-    candidates.sort((a,b) => new Date(b.ts) - new Date(a.ts));
-    return candidates[0];
+    if (inMonth.length === 0) return null;
+    const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDay);
+    const pool = onLastDay.length > 0 ? onLastDay : inMonth;
+    pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    return pool[0];
   };
 
   distanceEntries.forEach(e => {

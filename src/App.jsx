@@ -2393,6 +2393,173 @@ function DashboardAvgSpeedChart({ reports }) {
   );
 }
 
+
+function getShipMonthDowntimeDays(reports, ship, year, month) {
+  const entries = getAllDowntimeEntries(reports || []).filter(e => e.ship === ship);
+  let totalH = 0;
+  entries.forEach(e => {
+    const segs = splitByMonth(e.t0, e.t1);
+    segs.forEach(seg => {
+      if (seg.year === year && seg.month === month) totalH += seg.hours;
+    });
+  });
+  return totalH > 0 ? totalH / 24 : null;
+}
+
+function DashboardDowntimeChart({ reports }) {
+  const now = new Date();
+  const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const years = Array.from(new Set([
+    now.getFullYear(),
+    now.getFullYear() - 1,
+    ...((reports || []).map((r) => new Date(r.ts).getFullYear())),
+  ])).filter((y) => !isNaN(y)).sort((a, b) => b - a);
+
+  const [fYear, setFYear] = useState(String(now.getFullYear()));
+  const [fMonth, setFMonth] = useState(String(now.getMonth()));
+
+  const y = Number(fYear);
+  const m = Number(fMonth);
+  const prevM = m === 0 ? 11 : m - 1;
+  const prevY = m === 0 ? y - 1 : y;
+  const curLabel = MONTHS[m] || "—";
+  const prevLabel = MONTHS[prevM] || "—";
+
+  const COL_PREV = "#38bdf8";
+  const COL_CUR = "#f97316";
+
+  const ships = SPEED_CHART_SHIPS; // reuse same 8 vessels
+  const rows = ships.map((ship) => ({
+    ship,
+    prev: getShipMonthDowntimeDays(reports, ship, prevY, prevM),
+    cur: getShipMonthDowntimeDays(reports, ship, y, m),
+  }));
+
+  const yMax = Math.max(
+    1,
+    ...rows.flatMap((r) => [r.prev, r.cur].filter((v) => v != null)),
+  ) * 1.25;
+
+  const W = 760;
+  const H = 280;
+  const padL = 40;
+  const padR = 16;
+  const padT = 32;
+  const padB = 52;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const n = Math.max(rows.length, 1);
+  const groupW = plotW / n;
+  const barW = Math.min(24, groupW * 0.36);
+
+  const yScale = (v) => padT + plotH - (v / yMax) * plotH;
+  const fmt = (v) => (v == null ? "—" : Number(v).toFixed(2));
+
+  return (
+    <div
+      style={{
+        ...ss.card(),
+        marginBottom: 18,
+        padding: "16px 18px",
+        borderRadius: 16,
+        background: `linear-gradient(180deg, ${C.bg3} 0%, ${C.bg2 || C.bg3} 100%)`,
+        border: `1px solid ${C.border}`,
+        boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 14, position: "relative" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.01em" }}>Downtime · All Vessel (hari)</div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+            {prevLabel} {prevY} vs {curLabel} {y}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <select
+            style={{ ...ss.sel, width: "auto", minWidth: 96, borderRadius: 10, fontSize: 12, padding: "7px 10px" }}
+            value={fYear}
+            onChange={(e) => setFYear(e.target.value)}
+          >
+            {years.map((yy) => <option key={yy} value={yy}>{yy}</option>)}
+          </select>
+          <select
+            style={{ ...ss.sel, width: "auto", minWidth: 128, borderRadius: 10, fontSize: 12, padding: "7px 10px" }}
+            value={fMonth}
+            onChange={(e) => setFMonth(e.target.value)}
+          >
+            {MONTHS.map((name, idx) => <option key={name} value={idx}>{name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, position: "relative" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: C.text, background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 999, padding: "4px 10px" }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: COL_PREV, display: "inline-block", boxShadow: `0 0 0 2px ${COL_PREV}33` }} />
+          {prevLabel} (prev)
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: C.text, background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 999, padding: "4px 10px" }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: COL_CUR, display: "inline-block", boxShadow: `0 0 0 2px ${COL_CUR}33` }} />
+          {curLabel} (picked)
+        </span>
+      </div>
+
+      <div style={{ width: "100%", overflowX: "auto", position: "relative" }}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", minWidth: 580, height: "auto", display: "block" }}>
+          <rect x={padL} y={padT} width={plotW} height={plotH} rx="10" fill="rgba(255,255,255,0.02)" />
+
+          {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+            const yy = padT + plotH * (1 - t);
+            const val = (yMax * t).toFixed(1);
+            return (
+              <g key={t}>
+                <line x1={padL} y1={yy} x2={W - padR} y2={yy} stroke={C.border} strokeWidth="1" strokeDasharray={t === 0 ? "0" : "3 4"} opacity="0.7" />
+                <text x={padL - 8} y={yy + 3} textAnchor="end" fontSize="9" fill={C.muted}>{val}</text>
+              </g>
+            );
+          })}
+          <text x={12} y={padT + plotH / 2} textAnchor="middle" fontSize="9" fill={C.muted} transform={`rotate(-90 12 ${padT + plotH / 2})`}>hari</text>
+
+          {rows.map((r, i) => {
+            const cx = padL + groupW * i + groupW / 2;
+            const prevH = r.prev != null ? (r.prev / yMax) * plotH : 0;
+            const curH = r.cur != null ? (r.cur / yMax) * plotH : 0;
+            const x1 = cx - barW - 3;
+            const x2 = cx + 3;
+            const y1 = padT + plotH - prevH;
+            const y2 = padT + plotH - curH;
+            return (
+              <g key={r.ship}>
+                <rect x={padL + groupW * i} y={padT} width={groupW} height={plotH} fill="transparent" />
+                {r.prev != null && (
+                  <>
+                    <rect x={x1} y={y1} width={barW} height={Math.max(prevH, 0)} fill={COL_PREV} rx="5" />
+                    <text x={x1 + barW / 2} y={y1 - 5} textAnchor="middle" fontSize="8.5" fill={COL_PREV} fontWeight="700">{fmt(r.prev)}</text>
+                  </>
+                )}
+                {r.cur != null && (
+                  <>
+                    <rect x={x2} y={y2} width={barW} height={Math.max(curH, 0)} fill={COL_CUR} rx="5" />
+                    <text x={x2 + barW / 2} y={y2 - 5} textAnchor="middle" fontSize="8.5" fill={COL_CUR} fontWeight="700">{fmt(r.cur)}</text>
+                  </>
+                )}
+                {r.prev == null && r.cur == null && (
+                  <text x={cx} y={padT + plotH / 2} textAnchor="middle" fontSize="9" fill={C.muted}>n/a</text>
+                )}
+                <text x={cx} y={H - 22} textAnchor="middle" fontSize="9.5" fill={C.text} fontWeight="600">
+                  {r.ship.replace(" Mas", "")}
+                </text>
+                <text x={cx} y={H - 8} textAnchor="middle" fontSize="8" fill={C.muted}>Mas</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ reports, onNew, user, runningHours, consMe }) {
   const voys = computeVoyages(reports);
 
@@ -2473,6 +2640,7 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
       </div>
 
       <DashboardAvgSpeedChart reports={reports} />
+      <DashboardDowntimeChart reports={reports} />
 
     </div>
   );

@@ -4631,6 +4631,9 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
   // only ever one possible ship), so fShip stays "" and would never satisfy
   // this condition — fall back to user.ship in that case.
   const effectiveShip = fShip || user?.ship || "";
+
+  // Dashboard selalu dapat data full (tidak di-filter ship)
+  const dashboardReports = reports;
   let atPortDays = null;
   if (fYear && fMonth !== "" && effectiveShip) {
     const daysInMonth = new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();
@@ -5224,7 +5227,7 @@ export default function App() {
           </nav>
         )}
         <main style={{ ...ss.main, paddingBottom: isMobile ? 72 : 22, ...(page==="nc" ? { padding: isMobile ? "6px 6px 76px" : 0 } : {}), ...(isMobile && page!=="nc" ? { paddingLeft:12, paddingRight:12 } : {}) }}>
-          {page==="dashboard" && <Dashboard reports={visibleReports} onNew={() => setPage("new")} user={user} runningHours={runningHours} consMe={consMe}/>}
+          {page==="dashboard" && <Dashboard reports={dashboardReports} onNew={() => setPage("new")} user={user} runningHours={runningHours} consMe={consMe}/>}
           {page==="new"       && <ReportForm onSave={addReport} onCancel={() => setPage("dashboard")} allReports={visibleReports} user={user}/>}
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
           {page==="log"       && <ReportLog reports={visibleReports} onView={setViewing} user={user}/>}

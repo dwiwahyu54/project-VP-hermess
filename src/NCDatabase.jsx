@@ -897,31 +897,41 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
         )}
       </div>
 
-      {/* Per-vessel open mini strip */}
-      <div className="px-6 pb-3 flex flex-wrap gap-2">
-        {perVessel.map((v) => (
-          <button
-            key={v.vessel}
-            onClick={() => {
-              if (shipScope) return; // locked to own ship
-              setVesselFilter(vesselFilter === v.vessel ? "All" : v.vessel);
-            }}
-            style={{
-              background: (shipScope ? true : vesselFilter === v.vessel) ? T.amberDim : T.panel,
-              border: `1px solid ${(shipScope ? true : vesselFilter === v.vessel) ? T.amber : T.border}`,
-              color: (shipScope ? true : vesselFilter === v.vessel) ? T.amber : T.textSecondary,
-            }}
-            className="px-2.5 py-1 rounded-md text-xs flex items-center gap-1.5"
-          >
-            {v.vessel}
-            <span style={{ color: T.textMuted }}>· {v.total}</span>
-            {v.open > 0 && (
-              <span style={{ color: T.amber }} className="font-medium">
-                {v.open} open
-              </span>
-            )}
-          </button>
-        ))}
+      {/* Per-vessel chips: mobile horizontal scroll, desktop wrap */}
+      <div
+        className="px-3 sm:px-6 pb-3 flex gap-2 overflow-x-auto sm:overflow-visible sm:flex-wrap"
+        style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {perVessel.map((v) => {
+          const active = shipScope ? true : vesselFilter === v.vessel;
+          return (
+            <button
+              key={v.vessel}
+              type="button"
+              onClick={() => {
+                if (shipScope) return;
+                setVesselFilter(vesselFilter === v.vessel ? "All" : v.vessel);
+              }}
+              style={{
+                background: active ? T.amberDim : T.panel,
+                border: `1px solid ${active ? T.amber : T.border}`,
+                color: active ? T.amber : T.textSecondary,
+              }}
+              className="px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0 sm:shrink"
+            >
+              <span className="font-medium">{v.vessel}</span>
+              <span style={{ color: T.textMuted }}>· {v.total}</span>
+              {v.open > 0 && (
+                <span
+                  style={{ color: T.amber, background: T.amberDim }}
+                  className="font-semibold px-1.5 py-0.5 rounded-md"
+                >
+                  {v.open} open
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Table */}

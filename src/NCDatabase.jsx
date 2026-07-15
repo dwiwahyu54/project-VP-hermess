@@ -149,14 +149,56 @@ function findField(row, exactCandidates, includesCandidates) {
 
 function toDateStr(val) {
   if (val === null || val === undefined || val === "") return "";
-  if (val instanceof Date && !isNaN(val)) {
-    return val.toISOString().slice(0, 10);
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    // local date parts avoid UTC day-shift for pure dates
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, "0");
+    const d = String(val.getDate()).padStart(2, "0");
+    if (y < 1990 || y > 2100) return "";
+    return `${y}-${m}-${d}`;
+  }
+  // Excel serial number
+  if (typeof val === "number" && isFinite(val) && val > 20000 && val < 60000) {
+    const epoch = new Date(Date.UTC(1899, 11, 30));
+    const dt = new Date(epoch.getTime() + val * 86400000);
+    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
   }
   const s = String(val).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  if (!s) return "";
+  // Reject format placeholders / garbage (e.g. "DD", "MM", "YYYY", "dd/mm/yyyy")
+  if (/^(dd|mm|yy|yyyy|d|m|y)([\/\-.](dd|mm|yy|yyyy|d|m|y))*$/i.test(s)) return "";
+  if (!/\d/.test(s)) return "";
+
+  // already ISO
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const iso = s.slice(0, 10);
+    const [yy, mm, dd] = iso.split("-").map(Number);
+    if (yy >= 1990 && yy <= 2100 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) return iso;
+    return "";
+  }
+  // DD/MM/YYYY or DD-MM-YYYY
+  const m1 = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (m1) {
+    const dd = Number(m1[1]), mm = Number(m1[2]), yy = Number(m1[3]);
+    if (yy >= 1990 && yy <= 2100 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+      return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    }
+    return "";
+  }
+  // YYYY/MM/DD
+  const m2 = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+  if (m2) {
+    const yy = Number(m2[1]), mm = Number(m2[2]), dd = Number(m2[3]);
+    if (yy >= 1990 && yy <= 2100 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+      return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    }
+    return "";
+  }
   const parsed = new Date(s);
-  if (!isNaN(parsed) && /\d/.test(s)) return parsed.toISOString().slice(0, 10);
-  return s;
+  if (!isNaN(parsed.getTime()) && /\d{4}/.test(s)) {
+    return toDateStr(parsed);
+  }
+  return ""; // never send invalid tokens like "DD" to DB
 }
 
 function normalizeStatus(val) {
@@ -197,6 +239,13 @@ function recordToRow(r) {
     const s = String(d || "").trim();
     return s ? s : null;
   };
+  // Supabase date columns only accept YYYY-MM-DD or null
+  const dateToNull = (d) => {
+    const s = toDateStr(d);
+    if (!s) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    return s;
+  };
   return {
     no: Number(r.no),
     vessel: r.vessel || "",
@@ -207,11 +256,11 @@ function recordToRow(r) {
     category: r.category || "",
     sub_category: r.subCategory || "",
     risk: r.risk || "Normal",
-    issued_date: emptyToNull(r.issuedDate),
+    issued_date: dateToNull(r.issuedDate),
     audit_year: r.auditYear || "",
     audit_round: r.auditRound || "",
-    due_date: emptyToNull(r.dueDate),
-    closed_date: emptyToNull(r.closedDate),
+    due_date: dateToNull(r.dueDate),
+    closed_date: dateToNull(r.closedDate),
     status: normalizeStatus(r.status),
     remark: r.remark || "",
     captain: r.captain || "",

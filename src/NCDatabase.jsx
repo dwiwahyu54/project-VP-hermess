@@ -140,9 +140,12 @@ function findField(row, exactCandidates, includesCandidates) {
     const hit = keys.find((k) => normKey(k) === cand);
     if (hit !== undefined) return row[hit];
   }
+  // Prefer shortest key match so "Issued Date" wins over "Month (Issued Date)"
   for (const cand of includesCandidates) {
-    const hit = keys.find((k) => normKey(k).includes(cand));
-    if (hit !== undefined) return row[hit];
+    const hits = keys
+      .filter((k) => normKey(k).includes(cand))
+      .sort((a, b) => normKey(a).length - normKey(b).length);
+    if (hits.length) return row[hits[0]];
   }
   return "";
 }
@@ -313,6 +316,18 @@ function parseWorkbook(workbook, XLSX = window.XLSX) {
     defval: "",
   });
 
+  // Prefer canonical date columns by exact header (avoid Month/Years/Quarter of Issued Date)
+  const pickDate = (row, exactName) => {
+    const keys = Object.keys(row);
+    const exact = keys.find((k) => normKey(k) === exactName);
+    if (exact !== undefined) return toDateStr(row[exact]);
+    // shortest includes match
+    const hits = keys
+      .filter((k) => normKey(k).includes(exactName) && !normKey(k).includes("month") && !normKey(k).includes("year") && !normKey(k).includes("quarter"))
+      .sort((a, b) => normKey(a).length - normKey(b).length);
+    return hits.length ? toDateStr(row[hits[0]]) : "";
+  };
+
   const records = [];
   for (const row of rows) {
     const noRaw = findField(row, ["no."], ["no"]);
@@ -336,19 +351,13 @@ function parseWorkbook(workbook, XLSX = window.XLSX) {
       category: String(findField(row, ["category of nc"], ["category of nc"])).trim(),
       subCategory: String(findField(row, ["sub category"], ["sub category"])).trim(),
       risk: String(findField(row, ["risk category"], ["risk"])).trim() || "Normal",
-      issuedDate: toDateStr(
-        findField(row, ["issued date"], ["issued date", "date issued", "tgl issued", "tanggal issued"])
-      ),
+      issuedDate: pickDate(row, "issued date") || toDateStr(findField(row, ["issued date"], ["date issued"])),
       auditYear: String(
         findField(row, ["years (issued date)"], ["years", "year"])
       ).trim().replace(/\.0$/, ""),
       auditRound: String(findField(row, [], ["help 2", "audit 1", "audit round"])).trim(),
-      dueDate: toDateStr(
-        findField(row, ["due date"], ["due date", "tgl due", "tanggal due"])
-      ),
-      closedDate: toDateStr(
-        findField(row, ["closed date"], ["closed date", "tgl closed", "tanggal closed", "date closed"])
-      ),
+      dueDate: pickDate(row, "due date") || toDateStr(findField(row, ["due date"], ["tgl due"])),
+      closedDate: pickDate(row, "closed date") || toDateStr(findField(row, ["closed date"], ["date closed"])),
       status: normalizeStatus(findField(row, ["status2"], ["status2", "status"])),
       remark: String(findField(row, ["remark"], ["remark"])).trim(),
       captain: String(findField(row, ["captain name"], ["captain"])).trim(),

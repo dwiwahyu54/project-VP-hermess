@@ -2089,7 +2089,6 @@ const SPEED_PARAM_BY_SHIP = {
   "Segoro Mas": 9.2,
 };
 
-// Display order (Gulf Mas & Bahar Mas intentionally excluded)
 const SPEED_CHART_SHIPS = [
   "Sahabat Mas", "Semangat Mas", "Express Mas", "Pratama Mas",
   "Prakarsa Mas", "Mavendra Mas", "Selaras Mas", "Segoro Mas",

@@ -4538,7 +4538,7 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
   const arrTypeLabel = (type, cross) => {
     const base = type === "arr_berth" ? "Arrival Berthing" : type === "arr_anchor" ? "Arrival Anchorage" : (type || "Arrival");
-    return cross ? `${base} (ttl_dist - drun+(spd*12))` : base;
+    return cross ? `${base} (ttl_dist - (drun+(spd*12)))` : base;
   };
 
   // Crossing-month estimate: prefer noon on calendar last day of month;

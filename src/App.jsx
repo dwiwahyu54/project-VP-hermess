@@ -2561,6 +2561,8 @@ function DashboardDowntimeChart({ reports }) {
 }
 
 function Dashboard({ reports, onNew, user, runningHours, consMe }) {
+  // Dashboard selalu full access (tidak pakai shipScope)
+  const shipScope = "";
   const voys = computeVoyages(reports);
 
   // Get status for each ship

@@ -2156,8 +2156,6 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
         </div>
       </div>
 
-
-      <VoyageSummary reports={reports} voys={voys} user={user} runningHours={runningHours} consMe={consMe}/>
     </div>
   );
 }
@@ -3748,7 +3746,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
   );
 }
 
-function ManagementReport({ reports, runningHours, user }) {
+function ManagementReport({ reports, runningHours, user, consMe }) {
   const [fShip, setFShip] = useState("");
   const [fYear, setFYear] = useState("");
   const [fMonth, setFMonth] = useState("");
@@ -4163,8 +4161,18 @@ function ManagementReport({ reports, runningHours, user }) {
   return (
     <div>
       <div style={{ fontSize:18, fontWeight:700, marginBottom:4 }}>Management Report</div>
-      <div style={{ fontSize:11, color:C.muted, marginBottom:14 }}>Ringkasan downtime seluruh kapal</div>
+      <div style={{ fontSize:11, color:C.muted, marginBottom:14 }}>Vessel Report & ringkasan downtime seluruh kapal</div>
 
+      {/* Vessel Report (moved from Dashboard) — above ship/year/month filters */}
+      <VoyageSummary
+        reports={reports}
+        voys={computeVoyages(reports)}
+        user={user}
+        runningHours={runningHours}
+        consMe={consMe}
+      />
+
+      <div style={{ fontSize:13, fontWeight:700, color:C.accent, margin:"18px 0 10px" }}>Filter & Detail Operasional</div>
       <div style={{ display:"flex", gap:10, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
         {!user?.ship && (
           <select style={{ ...ss.sel, width:"auto", minWidth:160 }} value={fShip} onChange={e=>setFShip(e.target.value)}>
@@ -4733,7 +4741,7 @@ export default function App() {
           {page==="edit"      && <ReportForm editReport={editing} onUpdate={updateReport} onCancel={() => { setEditing(null); setPage("log"); }} allReports={visibleReports} user={user}/>}
           {page==="log"       && <ReportLog reports={visibleReports} onView={setViewing} user={user}/>}
           {page==="rh"        && <RHConsPage runningHours={runningHours} setRunningHours={setRunningHours} user={user} consMe={consMe} setConsMe={setConsMe}/>}
-          {page==="mgmt"      && <ManagementReport reports={visibleReports} runningHours={runningHours} user={user}/>}
+          {page==="mgmt"      && <ManagementReport reports={visibleReports} runningHours={runningHours} user={user} consMe={consMe}/>}
           {page==="nc"        && <NCDatabase theme={theme} user={user} />}
         </main>
       </div>

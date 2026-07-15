@@ -2332,6 +2332,16 @@ function DashboardAvgSpeedChart({ reports }) {
                 <text x={cx} y={H - 8} textAnchor="middle" fontSize="8" fill={C.muted}>Mas</text>
 
                 <circle cx={cx} cy={yScale(r.param)} r="3.5" fill={COL_PARAM} stroke="#fff" strokeWidth="1" />
+                <text
+                  x={cx}
+                  y={yScale(r.param) - 9}
+                  textAnchor="middle"
+                  fontSize="8.5"
+                  fill={COL_PARAM}
+                  fontWeight="700"
+                >
+                  {r.param.toFixed(1)}
+                </text>
               </g>
             );
           })}

@@ -2077,6 +2077,191 @@ function getShipCurrentStatus(ship, voys) {
 }
 
 // --- DASHBOARD ----------------------------------------------------------------
+// --- Dashboard Average Speed chart (prev month vs selected month) ---
+const SPEED_PARAM_BY_SHIP = {
+  "Sahabat Mas": 9.0,
+  "Semangat Mas": 9.0,
+  "Express Mas": 9.0,
+  "Pratama Mas": 9.2,
+  "Prakarsa Mas": 9.2,
+  "Mavendra Mas": 8.5,
+  "Selaras Mas": 8.5,
+  "Segoro Mas": 9.2,
+};
+
+// Display order (Gulf Mas & Bahar Mas intentionally excluded)
+const SPEED_CHART_SHIPS = [
+  "Sahabat Mas", "Semangat Mas", "Express Mas", "Pratama Mas",
+  "Prakarsa Mas", "Mavendra Mas", "Selaras Mas", "Segoro Mas",
+];
+
+function getShipMonthAvgSpeed(reports, ship, year, month) {
+  const speeds = (reports || [])
+    .filter((r) => {
+      if (r.ship !== ship) return false;
+      if (!["noon", "arr_berth", "arr_anchor"].includes(r.type)) return false;
+      const d = new Date(r.ts);
+      return d.getFullYear() === year && d.getMonth() === month;
+    })
+    .map((r) => parseFloat(r.avg_spd != null && r.avg_spd !== "" ? r.avg_spd : r.spd))
+    .filter((n) => !isNaN(n) && n > 0);
+  if (!speeds.length) return null;
+  return speeds.reduce((a, b) => a + b, 0) / speeds.length;
+}
+
+function DashboardAvgSpeedChart({ reports }) {
+  const now = new Date();
+  const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const years = Array.from(new Set([
+    now.getFullYear(),
+    now.getFullYear() - 1,
+    ...((reports || []).map((r) => new Date(r.ts).getFullYear())),
+  ])).filter((y) => !isNaN(y)).sort((a, b) => b - a);
+
+  const [fYear, setFYear] = useState(String(now.getFullYear()));
+  const [fMonth, setFMonth] = useState(String(now.getMonth()));
+
+  const y = Number(fYear);
+  const m = Number(fMonth);
+  const prevM = m === 0 ? 11 : m - 1;
+  const prevY = m === 0 ? y - 1 : y;
+  const curLabel = MONTHS[m] || "—";
+  const prevLabel = MONTHS[prevM] || "—";
+
+  const ships = SPEED_CHART_SHIPS.filter((s) => SHIPS.includes(s));
+  const rows = ships.map((ship) => ({
+    ship,
+    prev: getShipMonthAvgSpeed(reports, ship, prevY, prevM),
+    cur: getShipMonthAvgSpeed(reports, ship, y, m),
+    param: SPEED_PARAM_BY_SHIP[ship] ?? 9.0,
+  }));
+
+  const yMax = Math.max(
+    10,
+    ...rows.flatMap((r) => [r.prev, r.cur, r.param].filter((v) => v != null)),
+  ) * 1.08;
+
+  const W = 720;
+  const H = 280;
+  const padL = 36;
+  const padR = 12;
+  const padT = 28;
+  const padB = 48;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const n = Math.max(rows.length, 1);
+  const groupW = plotW / n;
+  const barW = Math.min(22, groupW * 0.32);
+
+  const yScale = (v) => padT + plotH - (v / yMax) * plotH;
+  const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
+
+  // Parameter polyline points
+  const paramPts = rows
+    .map((r, i) => {
+      const cx = padL + groupW * i + groupW / 2;
+      return `${cx},${yScale(r.param)}`;
+    })
+    .join(" ");
+
+  return (
+    <div style={{ ...ss.card(), marginBottom: 18, padding: "14px 16px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>Average Speed All Vessel (knots)</div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
+            Biru = {prevLabel} {prevY} (prev) · Oranye = {curLabel} {y} (picked) · Garis = Parameter
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <select style={{ ...ss.sel, width: "auto", minWidth: 100 }} value={fYear} onChange={(e) => setFYear(e.target.value)}>
+            {years.map((yy) => <option key={yy} value={yy}>{yy}</option>)}
+          </select>
+          <select style={{ ...ss.sel, width: "auto", minWidth: 130 }} value={fMonth} onChange={(e) => setFMonth(e.target.value)}>
+            {MONTHS.map((name, idx) => <option key={name} value={idx}>{name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 14, fontSize: 10, color: C.muted, marginBottom: 8, flexWrap: "wrap" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 12, height: 12, borderRadius: 2, background: "#5B9BD5", display: "inline-block" }} />
+          {prevLabel} (prev)
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 12, height: 12, borderRadius: 2, background: "#ED7D31", display: "inline-block" }} />
+          {curLabel} (picked)
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 16, height: 2, background: "#C0C0C0", display: "inline-block" }} />
+          Parameter
+        </span>
+      </div>
+
+      <div style={{ width: "100%", overflowX: "auto" }}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", minWidth: 560, height: "auto", display: "block" }}>
+          {/* grid lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+            const yy = padT + plotH * (1 - t);
+            const val = (yMax * t).toFixed(0);
+            return (
+              <g key={t}>
+                <line x1={padL} y1={yy} x2={W - padR} y2={yy} stroke={C.border} strokeWidth="1" />
+                <text x={padL - 6} y={yy + 3} textAnchor="end" fontSize="9" fill={C.muted}>{val}</text>
+              </g>
+            );
+          })}
+
+          {/* bars + labels */}
+          {rows.map((r, i) => {
+            const cx = padL + groupW * i + groupW / 2;
+            const prevH = r.prev != null ? (r.prev / yMax) * plotH : 0;
+            const curH = r.cur != null ? (r.cur / yMax) * plotH : 0;
+            const x1 = cx - barW - 2;
+            const x2 = cx + 2;
+            const y1 = padT + plotH - prevH;
+            const y2 = padT + plotH - curH;
+            return (
+              <g key={r.ship}>
+                {r.prev != null && (
+                  <>
+                    <rect x={x1} y={y1} width={barW} height={prevH} fill="#5B9BD5" rx="2" />
+                    <text x={x1 + barW / 2} y={y1 - 4} textAnchor="middle" fontSize="8" fill={C.text} fontWeight="600">{fmt(r.prev)}</text>
+                  </>
+                )}
+                {r.cur != null && (
+                  <>
+                    <rect x={x2} y={y2} width={barW} height={curH} fill="#ED7D31" rx="2" />
+                    <text x={x2 + barW / 2} y={y2 - 4} textAnchor="middle" fontSize="8" fill={C.text} fontWeight="600">{fmt(r.cur)}</text>
+                  </>
+                )}
+                {r.prev == null && r.cur == null && (
+                  <text x={cx} y={padT + plotH / 2} textAnchor="middle" fontSize="8" fill={C.muted}>n/a</text>
+                )}
+                <text
+                  x={cx}
+                  y={H - 14}
+                  textAnchor="middle"
+                  fontSize="8"
+                  fill={C.muted}
+                >
+                  {r.ship.replace(" Mas", "")}
+                </text>
+                {/* param marker */}
+                <circle cx={cx} cy={yScale(r.param)} r="3" fill="#C0C0C0" stroke="#fff" strokeWidth="0.5" />
+                <text x={cx} y={yScale(r.param) - 8} textAnchor="middle" fontSize="7" fill="#C0C0C0">{r.param.toFixed(1)}</text>
+              </g>
+            );
+          })}
+
+          {/* parameter line */}
+          <polyline points={paramPts} fill="none" stroke="#C0C0C0" strokeWidth="2" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ reports, onNew, user, runningHours, consMe }) {
   const voys = computeVoyages(reports);
 
@@ -2155,6 +2340,8 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
           })}
         </div>
       </div>
+
+      <DashboardAvgSpeedChart reports={reports} />
 
     </div>
   );

@@ -4632,8 +4632,6 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
   // this condition — fall back to user.ship in that case.
   const effectiveShip = fShip || user?.ship || "";
 
-  // Dashboard selalu dapat data full (tidak di-filter ship)
-  const dashboardReports = reports;
   let atPortDays = null;
   if (fYear && fMonth !== "" && effectiveShip) {
     const daysInMonth = new Date(Number(fYear), Number(fMonth) + 1, 0).getDate();
@@ -5032,6 +5030,9 @@ export default function App() {
   // Buat Laporan, Semua Laporan, Ringkasan Voyage, Management Report) so
   // there's no separate place where the restriction could be missed.
   const visibleReports = (user && user.ship) ? reports.filter(r => r.ship === user.ship) : reports;
+
+  // Dashboard selalu full (tidak di-filter oleh ship)
+  const dashboardReports = reports;
 
   const loadRunningHours = async () => {
     try {

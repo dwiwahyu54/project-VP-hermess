@@ -2120,6 +2120,7 @@ function DashboardAvgSpeedChart({ reports }) {
 
   const [fYear, setFYear] = useState(String(now.getFullYear()));
   const [fMonth, setFMonth] = useState(String(now.getMonth()));
+  const [hover, setHover] = useState(null); // { ship, prev, cur, param, x, y }
 
   const y = Number(fYear);
   const m = Number(fMonth);
@@ -2127,6 +2128,10 @@ function DashboardAvgSpeedChart({ reports }) {
   const prevY = m === 0 ? y - 1 : y;
   const curLabel = MONTHS[m] || "—";
   const prevLabel = MONTHS[prevM] || "—";
+
+  const COL_PREV = "#38bdf8";
+  const COL_CUR = "#f97316";
+  const COL_PARAM = "#94a3b8";
 
   const ships = SPEED_CHART_SHIPS.filter((s) => SHIPS.includes(s));
   const rows = ships.map((ship) => ({
@@ -2139,24 +2144,23 @@ function DashboardAvgSpeedChart({ reports }) {
   const yMax = Math.max(
     10,
     ...rows.flatMap((r) => [r.prev, r.cur, r.param].filter((v) => v != null)),
-  ) * 1.08;
+  ) * 1.12;
 
-  const W = 720;
-  const H = 280;
-  const padL = 36;
-  const padR = 12;
-  const padT = 28;
-  const padB = 48;
+  const W = 760;
+  const H = 300;
+  const padL = 40;
+  const padR = 16;
+  const padT = 36;
+  const padB = 56;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
   const n = Math.max(rows.length, 1);
   const groupW = plotW / n;
-  const barW = Math.min(22, groupW * 0.32);
+  const barW = Math.min(24, groupW * 0.34);
 
   const yScale = (v) => padT + plotH - (v / yMax) * plotH;
   const fmt = (v) => (v == null ? "—" : Number(v).toFixed(1));
 
-  // Parameter polyline points
   const paramPts = rows
     .map((r, i) => {
       const cx = padL + groupW * i + groupW / 2;
@@ -2164,99 +2168,221 @@ function DashboardAvgSpeedChart({ reports }) {
     })
     .join(" ");
 
+  const pill = (bg, label) => (
+    <span
+      key={label}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 11,
+        fontWeight: 600,
+        color: C.text,
+        background: C.bg3,
+        border: `1px solid ${C.border}`,
+        borderRadius: 999,
+        padding: "4px 10px",
+      }}
+    >
+      <span style={{ width: 10, height: 10, borderRadius: 3, background: bg, display: "inline-block", boxShadow: `0 0 0 2px ${bg}33` }} />
+      {label}
+    </span>
+  );
+
   return (
-    <div style={{ ...ss.card(), marginBottom: 18, padding: "14px 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+    <div
+      style={{
+        ...ss.card(),
+        marginBottom: 18,
+        padding: "16px 18px",
+        borderRadius: 16,
+        background: `linear-gradient(180deg, ${C.bg3} 0%, ${C.bg2 || C.bg3} 100%)`,
+        border: `1px solid ${C.border}`,
+        boxShadow: "0 8px 28px rgba(0,0,0,0.18)",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* accent glow */}
+      <div style={{
+        position: "absolute", top: -40, right: -30, width: 160, height: 160, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(56,189,248,0.12), transparent 70%)", pointerEvents: "none",
+      }} />
+
+      {/* header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 14, position: "relative" }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>Average Speed All Vessel (knots)</div>
-          <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>
-            Biru = {prevLabel} {prevY} (prev) · Oranye = {curLabel} {y} (picked) · Garis = Parameter
+          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.01em" }}>Average Speed · All Vessel</div>
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+            knots · {prevLabel} {prevY} vs {curLabel} {y}
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          <select style={{ ...ss.sel, width: "auto", minWidth: 100 }} value={fYear} onChange={(e) => setFYear(e.target.value)}>
+          <select
+            style={{ ...ss.sel, width: "auto", minWidth: 96, borderRadius: 10, fontSize: 12, padding: "7px 10px" }}
+            value={fYear}
+            onChange={(e) => setFYear(e.target.value)}
+          >
             {years.map((yy) => <option key={yy} value={yy}>{yy}</option>)}
           </select>
-          <select style={{ ...ss.sel, width: "auto", minWidth: 130 }} value={fMonth} onChange={(e) => setFMonth(e.target.value)}>
+          <select
+            style={{ ...ss.sel, width: "auto", minWidth: 128, borderRadius: 10, fontSize: 12, padding: "7px 10px" }}
+            value={fMonth}
+            onChange={(e) => setFMonth(e.target.value)}
+          >
             {MONTHS.map((name, idx) => <option key={name} value={idx}>{name}</option>)}
           </select>
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 14, fontSize: 10, color: C.muted, marginBottom: 8, flexWrap: "wrap" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 12, height: 12, borderRadius: 2, background: "#5B9BD5", display: "inline-block" }} />
-          {prevLabel} (prev)
-        </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 12, height: 12, borderRadius: 2, background: "#ED7D31", display: "inline-block" }} />
-          {curLabel} (picked)
-        </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 16, height: 2, background: "#C0C0C0", display: "inline-block" }} />
-          Parameter
+      {/* legend pills */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, position: "relative" }}>
+        {pill(COL_PREV, `${prevLabel} (prev)`)}
+        {pill(COL_CUR, `${curLabel} (picked)`)}
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600,
+          color: C.text, background: C.bg3, border: `1px solid ${C.border}`, borderRadius: 999, padding: "4px 10px",
+        }}>
+          <span style={{ width: 14, height: 0, borderTop: `2px dashed ${COL_PARAM}`, display: "inline-block" }} />
+          Parameter / target
         </span>
       </div>
 
-      <div style={{ width: "100%", overflowX: "auto" }}>
-        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", minWidth: 560, height: "auto", display: "block" }}>
-          {/* grid lines */}
+      <div style={{ width: "100%", overflowX: "auto", position: "relative" }}>
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          style={{ width: "100%", minWidth: 580, height: "auto", display: "block" }}
+          onMouseLeave={() => setHover(null)}
+        >
+          <defs>
+            <linearGradient id="gradPrev" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#7dd3fc" />
+              <stop offset="100%" stopColor={COL_PREV} />
+            </linearGradient>
+            <linearGradient id="gradCur" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#fdba74" />
+              <stop offset="100%" stopColor={COL_CUR} />
+            </linearGradient>
+          </defs>
+
+          {/* plot bg */}
+          <rect x={padL} y={padT} width={plotW} height={plotH} rx="10" fill="rgba(255,255,255,0.02)" />
+
+          {/* grid */}
           {[0, 0.25, 0.5, 0.75, 1].map((t) => {
             const yy = padT + plotH * (1 - t);
             const val = (yMax * t).toFixed(0);
             return (
               <g key={t}>
-                <line x1={padL} y1={yy} x2={W - padR} y2={yy} stroke={C.border} strokeWidth="1" />
-                <text x={padL - 6} y={yy + 3} textAnchor="end" fontSize="9" fill={C.muted}>{val}</text>
+                <line x1={padL} y1={yy} x2={W - padR} y2={yy} stroke={C.border} strokeWidth="1" strokeDasharray={t === 0 ? "0" : "3 4"} opacity="0.7" />
+                <text x={padL - 8} y={yy + 3} textAnchor="end" fontSize="9" fill={C.muted}>{val}</text>
               </g>
             );
           })}
+          <text x={12} y={padT + plotH / 2} textAnchor="middle" fontSize="9" fill={C.muted} transform={`rotate(-90 12 ${padT + plotH / 2})`}>kts</text>
 
-          {/* bars + labels */}
+          {/* bars */}
           {rows.map((r, i) => {
             const cx = padL + groupW * i + groupW / 2;
             const prevH = r.prev != null ? (r.prev / yMax) * plotH : 0;
             const curH = r.cur != null ? (r.cur / yMax) * plotH : 0;
-            const x1 = cx - barW - 2;
-            const x2 = cx + 2;
+            const x1 = cx - barW - 3;
+            const x2 = cx + 3;
             const y1 = padT + plotH - prevH;
             const y2 = padT + plotH - curH;
+            const below = (r.cur != null && r.cur < r.param);
             return (
-              <g key={r.ship}>
+              <g
+                key={r.ship}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={() => setHover({ ship: r.ship, prev: r.prev, cur: r.cur, param: r.param, i })}
+                onClick={() => setHover({ ship: r.ship, prev: r.prev, cur: r.cur, param: r.param, i })}
+              >
+                {/* hit area */}
+                <rect x={padL + groupW * i} y={padT} width={groupW} height={plotH} fill="transparent" />
+
                 {r.prev != null && (
                   <>
-                    <rect x={x1} y={y1} width={barW} height={prevH} fill="#5B9BD5" rx="2" />
-                    <text x={x1 + barW / 2} y={y1 - 4} textAnchor="middle" fontSize="8" fill={C.text} fontWeight="600">{fmt(r.prev)}</text>
+                    <rect x={x1} y={y1} width={barW} height={Math.max(prevH, 0)} fill="url(#gradPrev)" rx="5" />
+                    <text x={x1 + barW / 2} y={y1 - 5} textAnchor="middle" fontSize="8.5" fill={COL_PREV} fontWeight="700">{fmt(r.prev)}</text>
                   </>
                 )}
                 {r.cur != null && (
                   <>
-                    <rect x={x2} y={y2} width={barW} height={curH} fill="#ED7D31" rx="2" />
-                    <text x={x2 + barW / 2} y={y2 - 4} textAnchor="middle" fontSize="8" fill={C.text} fontWeight="600">{fmt(r.cur)}</text>
+                    <rect
+                      x={x2}
+                      y={y2}
+                      width={barW}
+                      height={Math.max(curH, 0)}
+                      fill="url(#gradCur)"
+                      rx="5"
+                      stroke={below ? "#ef4444" : "transparent"}
+                      strokeWidth={below ? 1.5 : 0}
+                    />
+                    <text x={x2 + barW / 2} y={y2 - 5} textAnchor="middle" fontSize="8.5" fill={COL_CUR} fontWeight="700">{fmt(r.cur)}</text>
                   </>
                 )}
                 {r.prev == null && r.cur == null && (
-                  <text x={cx} y={padT + plotH / 2} textAnchor="middle" fontSize="8" fill={C.muted}>n/a</text>
+                  <text x={cx} y={padT + plotH / 2} textAnchor="middle" fontSize="9" fill={C.muted}>n/a</text>
                 )}
-                <text
-                  x={cx}
-                  y={H - 14}
-                  textAnchor="middle"
-                  fontSize="8"
-                  fill={C.muted}
-                >
+
+                <text x={cx} y={H - 22} textAnchor="middle" fontSize="9.5" fill={C.text} fontWeight="600">
                   {r.ship.replace(" Mas", "")}
                 </text>
-                {/* param marker */}
-                <circle cx={cx} cy={yScale(r.param)} r="3" fill="#C0C0C0" stroke="#fff" strokeWidth="0.5" />
-                <text x={cx} y={yScale(r.param) - 8} textAnchor="middle" fontSize="7" fill="#C0C0C0">{r.param.toFixed(1)}</text>
+                <text x={cx} y={H - 8} textAnchor="middle" fontSize="8" fill={C.muted}>Mas</text>
+
+                <circle cx={cx} cy={yScale(r.param)} r="3.5" fill={COL_PARAM} stroke="#fff" strokeWidth="1" />
               </g>
             );
           })}
 
-          {/* parameter line */}
-          <polyline points={paramPts} fill="none" stroke="#C0C0C0" strokeWidth="2" />
+          {/* parameter dashed line */}
+          <polyline
+            points={paramPts}
+            fill="none"
+            stroke={COL_PARAM}
+            strokeWidth="2"
+            strokeDasharray="5 4"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
         </svg>
+
+        {/* tooltip */}
+        {hover && (
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: 8,
+              transform: "translateX(-50%)",
+              background: C.bg2 || C.bg3,
+              border: `1px solid ${C.border}`,
+              borderRadius: 12,
+              padding: "8px 12px",
+              fontSize: 11,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+              pointerEvents: "none",
+              zIndex: 2,
+              minWidth: 180,
+            }}
+          >
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>{hover.ship}</div>
+            <div style={{ color: COL_PREV }}>{prevLabel}: <b>{fmt(hover.prev)}</b> kts</div>
+            <div style={{ color: COL_CUR }}>{curLabel}: <b>{fmt(hover.cur)}</b> kts</div>
+            <div style={{ color: COL_PARAM }}>Target: <b>{fmt(hover.param)}</b> kts</div>
+            {hover.cur != null && (
+              <div style={{ marginTop: 4, color: hover.cur >= hover.param ? "#22c55e" : "#ef4444", fontWeight: 600 }}>
+                {hover.cur >= hover.param ? "✓ di atas / = target" : "↓ di bawah target"}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 10, fontSize: 10, color: C.muted, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+        <span>Sumber: Noon + Arrival (avg_spd/spd) · tanpa Gulf Mas & Bahar Mas</span>
+        <span>Bar oranye di-outline merah jika di bawah parameter</span>
       </div>
     </div>
   );

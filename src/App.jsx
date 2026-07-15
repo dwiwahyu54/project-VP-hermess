@@ -2337,7 +2337,7 @@ function DashboardAvgSpeedChart({ reports }) {
                   y={yScale(r.param) - 9}
                   textAnchor="middle"
                   fontSize="8.5"
-                  fill={COL_PARAM}
+                  fill="#ef4444"
                   fontWeight="700"
                 >
                   {r.param.toFixed(1)}

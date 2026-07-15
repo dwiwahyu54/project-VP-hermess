@@ -3116,6 +3116,150 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     setFYear(String(currentYear)); 
     setFMonth(String(currentMonth)); 
   };
+
+  // --- Vessel Performance summary (CM = selected month, LM = previous month) ---
+  const perfYear = fYear ? Number(fYear) : new Date().getFullYear();
+  const perfMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+  const perfPrevMonth = perfMonth === 0 ? 11 : perfMonth - 1;
+  const perfPrevYear = perfMonth === 0 ? perfYear - 1 : perfYear;
+  const daysInPrevMonth = new Date(perfPrevYear, perfPrevMonth + 1, 0).getDate();
+  const cmMonthName = MONTHS[perfMonth];
+  const lmMonthName = MONTHS[perfPrevMonth];
+
+  const avgNum = (vals) => {
+    const v = vals.map((x) => (x == null || x === "" ? null : parseFloat(x))).filter((x) => x != null && !isNaN(x));
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  const sumNum = (vals) => vals.map((x) => parseFloat(x) || 0).reduce((a, b) => a + b, 0);
+  const fmtPerf = (v, dig = 2) => (v == null || isNaN(v) ? "—" : Number(v).toFixed(dig));
+
+  // LM Downtime / Anchorage / Berthing (same definitions as CM maps)
+  const DowntimePrevByShip = {};
+  const AnchoragePrevByShip = {};
+  const BerthingPrevHByShip = {};
+  SHIPS.forEach((ship) => {
+    const shipVoys = (voys || []).filter((v) => v.ship === ship);
+    let dtH = 0;
+    shipVoys.forEach((v) => {
+      (v.dts || []).forEach((dt) => {
+        if (!dt.t0 || !dt.t1) return;
+        splitByMonth(dt.t0, dt.t1).forEach((seg) => {
+          if (seg.year === perfPrevYear && seg.month === perfPrevMonth) dtH += seg.hours;
+        });
+      });
+    });
+    DowntimePrevByShip[ship] = dtH / 24;
+
+    let anchH = 0;
+    shipVoys.forEach((v) => {
+      const arrAnc = (v.list || []).find((r) => r.type === "arr_anchor");
+      if (!arrAnc) return;
+      const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
+      if (!t0) return;
+      const shiftBerth = (v.list || []).find((r) => r.type === "shift_berth");
+      const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
+      splitByMonth(t0, t1).forEach((seg) => {
+        if (seg.year === perfPrevYear && seg.month === perfPrevMonth) anchH += seg.hours;
+      });
+    });
+    AnchoragePrevByShip[ship] = anchH / 24;
+
+    const sorted = [...shipVoys].sort(
+      (a, b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0)
+    );
+    sorted.forEach((v, idx) => {
+      const shiftBerth = (v.list || []).find((r) => r.type === "shift_berth");
+      const arrBerth = (v.list || []).find((r) => r.type === "arr_berth");
+      const berthReport = shiftBerth || arrBerth;
+      if (!berthReport) return;
+      const t0 = berthReport[evKey("FWE")] || berthReport.ts;
+      if (!t0) return;
+      const nextV = sorted[idx + 1];
+      const t1 = nextV?.bosv || new Date().toISOString();
+      splitByMonth(t0, t1).forEach((seg) => {
+        if (seg.year === perfPrevYear && seg.month === perfPrevMonth) {
+          BerthingPrevHByShip[ship] = (BerthingPrevHByShip[ship] || 0) + seg.hours;
+        }
+      });
+    });
+  });
+
+  const AtPortPrevByShip = {};
+  const SailingPrevByShip = {};
+  SHIPS.forEach((ship) => {
+    const berthingD = (BerthingPrevHByShip[ship] || 0) / 24;
+    const anchorageD = AnchoragePrevByShip[ship] || 0;
+    const downtimeD = DowntimePrevByShip[ship] || 0;
+    const rhKey = `${ship}|${perfPrevYear}|${perfPrevMonth}`;
+    const rhMeVal = runningHours?.[rhKey]?.me;
+    if (rhMeVal === undefined || rhMeVal === null || rhMeVal === "") {
+      AtPortPrevByShip[ship] = null;
+      SailingPrevByShip[ship] = null;
+    } else {
+      const rhMe = parseFloat(rhMeVal) || 0;
+      const atPortD = berthingD - rhMe / 24 - (daysInPrevMonth - downtimeD - berthingD - anchorageD);
+      AtPortPrevByShip[ship] = atPortD;
+      SailingPrevByShip[ship] = Math.max(0, daysInPrevMonth - atPortD - anchorageD - downtimeD);
+    }
+  });
+
+  const DistancePrevByShip = {};
+  SHIPS.forEach((ship) => {
+    DistancePrevByShip[ship] = reports
+      .filter((r) => ["arr_berth", "arr_anchor"].includes(r.type) && r.ship === ship && r.ttl_dist)
+      .filter((r) => {
+        const d = new Date(r.ts);
+        return d.getFullYear() === perfPrevYear && d.getMonth() === perfPrevMonth;
+      })
+      .reduce((sum, r) => sum + (parseFloat(r.ttl_dist) || 0), 0);
+  });
+
+  const vesselPerfRows = [
+    {
+      label: "Average Vessel Speed",
+      cm: avgNum(SHIPS.map((s) => AvgSpeedByShip[s])),
+      lm: avgNum(SHIPS.map((s) => AvgSpeedPrevByShip[s])),
+      unit: "knot",
+      dig: 2,
+    },
+    {
+      label: "Total Miles Laut",
+      cm: sumNum(SHIPS.map((s) => TotalDistanceByShip[s])),
+      lm: sumNum(SHIPS.map((s) => DistancePrevByShip[s])),
+      unit: "miles",
+      dig: 0,
+    },
+    {
+      label: "Average Sailing Day/Month",
+      cm: avgNum(SHIPS.map((s) => SailingDaysByShip[s])),
+      lm: avgNum(SHIPS.map((s) => SailingPrevByShip[s])),
+      unit: "hari",
+      dig: 2,
+    },
+    {
+      label: "Average At Port/Month",
+      cm: avgNum(SHIPS.map((s) => AtPortDaysByShip[s])),
+      lm: avgNum(SHIPS.map((s) => AtPortPrevByShip[s])),
+      unit: "hari",
+      dig: 2,
+    },
+    {
+      label: "Average Anchorage/Month",
+      cm: avgNum(SHIPS.map((s) => AnchorageDaysByShip[s])),
+      lm: avgNum(SHIPS.map((s) => AnchoragePrevByShip[s])),
+      unit: "hari",
+      dig: 2,
+    },
+    {
+      label: "Total Downtime/Month",
+      cm: sumNum(SHIPS.map((s) => DowntimeDaysByShip[s])),
+      lm: sumNum(SHIPS.map((s) => DowntimePrevByShip[s])),
+      unit: "hari",
+      dig: 2,
+    },
+  ];
+
+
   const activeCount = [fYear, fMonth].filter(x=>x!=="").length;
    // ============================================================
 // FUNGSI DOWNLOAD EXCEL
@@ -3373,6 +3517,41 @@ const handleDownloadExcel = async () => {
       </div>
       <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
         * Default: {new Date().getFullYear()} / {MONTHS[new Date().getMonth()]}. Kolom At Port & Sailing membutuhkan data Running Hours ME per kapal. Kolom Jarak Laut = Total Distance. AVG Speed menggunakan data dari Arrival Report.
+      </div>
+
+      {/* Vessel Performance CM vs LM — ikut filter Tahun/Bulan Vessel Report */}
+      <div style={{ marginTop: 18, marginBottom: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.accent, marginBottom: 8, letterSpacing: "0.04em" }}>
+          VESSEL PERFORMANCE
+          <span style={{ fontWeight: 500, color: C.muted, marginLeft: 8, fontSize: 11 }}>
+            CM = {cmMonthName} {perfYear} · LM = {lmMonthName} {perfPrevYear}
+          </span>
+        </div>
+        <div style={{ borderRadius: 12, border: `1px solid ${C.border}`, overflow: "auto", maxWidth: 560 }}>
+          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12, minWidth: 420 }}>
+            <thead>
+              <tr style={{ background: `${C.horizon}22` }}>
+                <th style={{ ...ss.th, textAlign: "left", padding: "9px 12px", border: `1px solid ${C.border}`, color: C.accent }}>VESSEL PERFORMANCE</th>
+                <th style={{ ...ss.th, textAlign: "center", padding: "9px 12px", border: `1px solid ${C.border}`, minWidth: 72 }}>CM</th>
+                <th style={{ ...ss.th, textAlign: "center", padding: "9px 12px", border: `1px solid ${C.border}`, minWidth: 72 }}>LM</th>
+                <th style={{ ...ss.th, textAlign: "center", padding: "9px 12px", border: `1px solid ${C.border}`, minWidth: 64 }}>Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vesselPerfRows.map((row, i) => (
+                <tr key={row.label} style={{ background: i % 2 ? `${C.muted}10` : "transparent" }}>
+                  <td style={{ ...ss.td(i % 2), textAlign: "left", padding: "8px 12px", border: `1px solid ${C.border}`, fontWeight: 600 }}>{row.label}</td>
+                  <td style={{ ...ss.td(i % 2), textAlign: "center", padding: "8px 12px", border: `1px solid ${C.border}`, fontWeight: 700, color: C.horizon }}>{fmtPerf(row.cm, row.dig)}</td>
+                  <td style={{ ...ss.td(i % 2), textAlign: "center", padding: "8px 12px", border: `1px solid ${C.border}`, fontWeight: 600 }}>{fmtPerf(row.lm, row.dig)}</td>
+                  <td style={{ ...ss.td(i % 2), textAlign: "center", padding: "8px 12px", border: `1px solid ${C.border}`, color: C.muted }}>{row.unit}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ fontSize: 10, color: C.muted, marginTop: 6 }}>
+          CM = Current Month (filter Vessel Report) · LM = Last Month (bulan sebelumnya). Average = rata-rata 8 kapal · Total = jumlah fleet.
+        </div>
       </div>
       
     </div>

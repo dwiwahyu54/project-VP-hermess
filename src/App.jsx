@@ -3020,9 +3020,9 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
         if (!isNaN(spd) && spd > 0) { sum += spd; count++; }
       });
 
-    // 2. Active voyages (departed but no arrival) - use latest noon report regardless of month
+    // 2. Active voyages without arrival in THIS month — only noon reports in the selected month
+    // (jangan pakai noon lintas bulan, biar bulan kosong tidak dapat angka palsu)
     shipVoys.forEach(v => {
-      // Skip if already has arrival in this month
       const hasArrivalInMonth = reports.some(r =>
         ["arr_berth","arr_anchor"].includes(r.type) &&
         r.ship === ship && r.voy === v.no &&
@@ -3030,17 +3030,18 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       );
       if (hasArrivalInMonth) return;
 
-      // Skip if voyage has no departure at all
       const hasDeparture = reports.some(r =>
         ["departure","dep_anchor","shift_anchor"].includes(r.type) &&
         r.ship === ship && r.voy === v.no
       );
       if (!hasDeparture) return;
 
-      // Get the latest noon report for this voyage (regardless of month)
+      // Hanya noon di bulan/tahun yang dipilih
       const noonReports = reports
         .filter(r => r.type === "noon" && r.ship === ship && r.voy === v.no)
         .filter(r => {
+          const d = new Date(r.ts);
+          if (d.getFullYear() !== tYear || d.getMonth() !== tMonth) return false;
           const spd = parseFloat(r.avg_spd || r.spd);
           return !isNaN(spd) && spd > 0;
         })

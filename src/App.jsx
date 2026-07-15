@@ -2390,10 +2390,6 @@ function DashboardAvgSpeedChart({ reports }) {
         )}
       </div>
 
-      <div style={{ marginTop: 10, fontSize: 10, color: C.muted, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
-        <span>Sumber: Noon + Arrival (avg_spd/spd) · tanpa Gulf Mas & Bahar Mas</span>
-        <span>Bar oranye di-outline merah jika di bawah parameter</span>
-      </div>
     </div>
   );
 }

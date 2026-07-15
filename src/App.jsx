@@ -2255,17 +2255,27 @@ function DashboardAvgSpeedChart({ reports }) {
         >
           <defs>
             <linearGradient id="gradPrev" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7dd3fc" />
-              <stop offset="100%" stopColor={COL_PREV} />
+              <stop offset="0%" stopColor="#0ea5e9" />
+              <stop offset="100%" stopColor="#0369a1" />
             </linearGradient>
             <linearGradient id="gradCur" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#fdba74" />
-              <stop offset="100%" stopColor={COL_CUR} />
+              <stop offset="0%" stopColor="#fb923c" />
+              <stop offset="100%" stopColor="#c2410c" />
             </linearGradient>
           </defs>
 
           {/* plot bg */}
           <rect x={padL} y={padT} width={plotW} height={plotH} rx="10" fill="rgba(255,255,255,0.02)" />
+          <defs>
+            <linearGradient id="gradDtPrev" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0ea5e9" />
+              <stop offset="100%" stopColor="#0369a1" />
+            </linearGradient>
+            <linearGradient id="gradDtCur" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#fb923c" />
+              <stop offset="100%" stopColor="#c2410c" />
+            </linearGradient>
+          </defs>
 
           {/* grid */}
           {[0, 0.25, 0.5, 0.75, 1].map((t) => {
@@ -2534,13 +2544,13 @@ function DashboardDowntimeChart({ reports }) {
                 <rect x={padL + groupW * i} y={padT} width={groupW} height={plotH} fill="transparent" />
                 {r.prev != null && (
                   <>
-                    <rect x={x1} y={y1} width={barW} height={Math.max(prevH, 0)} fill={COL_PREV} rx="5" />
+                    <rect x={x1} y={y1} width={barW} height={Math.max(prevH, 0)} fill="url(#gradDtPrev)" rx="5" />
                     <text x={x1 + barW / 2} y={y1 - 5} textAnchor="middle" fontSize="8.5" fill={COL_PREV} fontWeight="700">{fmt(r.prev)}</text>
                   </>
                 )}
                 {r.cur != null && (
                   <>
-                    <rect x={x2} y={y2} width={barW} height={Math.max(curH, 0)} fill={COL_CUR} rx="5" />
+                    <rect x={x2} y={y2} width={barW} height={Math.max(curH, 0)} fill="url(#gradDtCur)" rx="5" />
                     <text x={x2 + barW / 2} y={y2 - 5} textAnchor="middle" fontSize="8.5" fill={COL_CUR} fontWeight="700">{fmt(r.cur)}</text>
                   </>
                 )}

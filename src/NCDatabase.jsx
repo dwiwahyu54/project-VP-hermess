@@ -150,41 +150,53 @@ function findField(row, exactCandidates, includesCandidates) {
 function toDateStr(val) {
   if (val === null || val === undefined || val === "") return "";
   if (val instanceof Date && !isNaN(val.getTime())) {
-    // local date parts avoid UTC day-shift for pure dates
     const y = val.getFullYear();
     const m = String(val.getMonth() + 1).padStart(2, "0");
     const d = String(val.getDate()).padStart(2, "0");
     if (y < 1990 || y > 2100) return "";
     return `${y}-${m}-${d}`;
   }
-  // Excel serial number
-  if (typeof val === "number" && isFinite(val) && val > 20000 && val < 60000) {
-    const epoch = new Date(Date.UTC(1899, 11, 30));
-    const dt = new Date(epoch.getTime() + val * 86400000);
-    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  // Excel serial number (days since 1899-12-30)
+  if (typeof val === "number" && isFinite(val) && val > 20000 && val < 80000) {
+    const epoch = Date.UTC(1899, 11, 30);
+    const dt = new Date(epoch + Math.round(val) * 86400000);
+    if (!isNaN(dt.getTime())) {
+      return dt.toISOString().slice(0, 10);
+    }
   }
   const s = String(val).trim();
   if (!s) return "";
-  // Reject format placeholders / garbage (e.g. "DD", "MM", "YYYY", "dd/mm/yyyy")
+  // Reject format placeholders (Due Date often "DD" in Excel)
   if (/^(dd|mm|yy|yyyy|d|m|y)([\/\-.](dd|mm|yy|yyyy|d|m|y))*$/i.test(s)) return "";
   if (!/\d/.test(s)) return "";
 
-  // already ISO
+  // ISO yyyy-mm-dd (optional time)
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
     const iso = s.slice(0, 10);
     const [yy, mm, dd] = iso.split("-").map(Number);
     if (yy >= 1990 && yy <= 2100 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) return iso;
     return "";
   }
-  // DD/MM/YYYY or DD-MM-YYYY
-  const m1 = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+
+  // DD/MM/YYYY or DD-MM-YYYY (prefer ID format when day>12)
+  const m1 = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
   if (m1) {
-    const dd = Number(m1[1]), mm = Number(m1[2]), yy = Number(m1[3]);
+    let dd = Number(m1[1]), mm = Number(m1[2]), yy = Number(m1[3]);
+    if (yy < 100) yy += 2000;
+    // if first part > 12, clearly DD/MM; if second > 12 clearly MM/DD swapped
+    if (dd > 12 && mm <= 12) {
+      // DD/MM/YYYY as-is
+    } else if (mm > 12 && dd <= 12) {
+      // was MM/DD → swap
+      const t = dd; dd = mm; mm = t;
+    }
+    // else ambiguous: treat as DD/MM (ID)
     if (yy >= 1990 && yy <= 2100 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
       return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
     }
     return "";
   }
+
   // YYYY/MM/DD
   const m2 = s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
   if (m2) {
@@ -194,11 +206,13 @@ function toDateStr(val) {
     }
     return "";
   }
+
+  // e.g. 11-Jan-2023 / 11 Jan 2023
   const parsed = new Date(s);
-  if (!isNaN(parsed.getTime()) && /\d{4}/.test(s)) {
+  if (!isNaN(parsed.getTime()) && /\d{4}|\d{1,2}/.test(s)) {
     return toDateStr(parsed);
   }
-  return ""; // never send invalid tokens like "DD" to DB
+  return "";
 }
 
 function normalizeStatus(val) {
@@ -292,11 +306,11 @@ function parseWorkbook(workbook, XLSX = window.XLSX) {
     );
   }
 
+  // raw:true keeps Excel Date objects / serials so toDateStr can parse reliably
   const rows = XLSX.utils.sheet_to_json(ws, {
     range: headerRowIdx,
-    raw: false,
+    raw: true,
     defval: "",
-    dateNF: "yyyy-mm-dd",
   });
 
   const records = [];
@@ -322,11 +336,19 @@ function parseWorkbook(workbook, XLSX = window.XLSX) {
       category: String(findField(row, ["category of nc"], ["category of nc"])).trim(),
       subCategory: String(findField(row, ["sub category"], ["sub category"])).trim(),
       risk: String(findField(row, ["risk category"], ["risk"])).trim() || "Normal",
-      issuedDate: toDateStr(findField(row, ["issued date"], ["issued date"])),
-      auditYear: String(findField(row, [], ["years", "year"])).trim().replace(/\.0$/, ""),
+      issuedDate: toDateStr(
+        findField(row, ["issued date"], ["issued date", "date issued", "tgl issued", "tanggal issued"])
+      ),
+      auditYear: String(
+        findField(row, ["years (issued date)"], ["years", "year"])
+      ).trim().replace(/\.0$/, ""),
       auditRound: String(findField(row, [], ["help 2", "audit 1", "audit round"])).trim(),
-      dueDate: toDateStr(findField(row, ["due date"], ["due date"])),
-      closedDate: toDateStr(findField(row, ["closed date"], ["closed date"])),
+      dueDate: toDateStr(
+        findField(row, ["due date"], ["due date", "tgl due", "tanggal due"])
+      ),
+      closedDate: toDateStr(
+        findField(row, ["closed date"], ["closed date", "tgl closed", "tanggal closed", "date closed"])
+      ),
       status: normalizeStatus(findField(row, ["status2"], ["status2", "status"])),
       remark: String(findField(row, ["remark"], ["remark"])).trim(),
       captain: String(findField(row, ["captain name"], ["captain"])).trim(),
@@ -538,7 +560,12 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
               // keep existing as-is
             } else {
               updated++;
-              map.set(rec.no, rec);
+              // Jangan timpa tanggal valid di DB dengan kosong dari Excel
+              const keep = { ...rec };
+              if (!keep.issuedDate && existing.issuedDate) keep.issuedDate = existing.issuedDate;
+              if (!keep.dueDate && existing.dueDate) keep.dueDate = existing.dueDate;
+              if (!keep.closedDate && existing.closedDate) keep.closedDate = existing.closedDate;
+              map.set(rec.no, keep);
             }
           }
 
@@ -1029,10 +1056,10 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
                       </span>
                     </td>
                     <td className="py-2 px-2 font-mono text-xs whitespace-nowrap" style={{ color: T.textSecondary }}>
-                      {r.issuedDate}
+                      {r.issuedDate || "—"}
                     </td>
                     <td className="py-2 px-2 font-mono text-xs whitespace-nowrap" style={{ color: T.textSecondary }}>
-                      {r.dueDate}
+                      {r.dueDate || "—"}
                     </td>
                     <td className="py-2 px-2">
                       <StatusStamp status={r.status} T={T} />
@@ -1049,6 +1076,8 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
                           <Detail label="Sub kategori" value={r.subCategory} T={T} />
                           <Detail label="Tahun audit" value={r.auditYear || "—"} T={T} />
                           <Detail label="Audit ke-" value={r.auditRound || "—"} T={T} />
+                          <Detail label="Issued date" value={r.issuedDate || "—"} T={T} />
+                          <Detail label="Due date" value={r.dueDate || "—"} T={T} />
                           <Detail label="Closed date" value={r.closedDate || "—"} T={T} />
                           <Detail label="Captain" value={r.captain || "—"} T={T} />
                           <Detail label="Auditor" value={r.auditor || "—"} T={T} />

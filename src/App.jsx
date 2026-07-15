@@ -4532,14 +4532,14 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
   let totalDistance = 0;
   const distanceEntries = getTotalDistanceEntries(reports).filter(e => !fShip || e.ship === fShip);
-  // Mutable detail list (arrival rows + underway noon estimates)
-  const distanceDetailRows = distanceEntries.filter(e => {
-    const d = new Date(e.ts);
-    const yearOk  = !fYear  || d.getFullYear() === Number(fYear);
-    const monthOk = !fMonth || d.getMonth() === Number(fMonth);
-    return yearOk && monthOk;
-  }).map(e => ({ ...e }));
+  // Built in lockstep with totalDistance (so rincian = angka yang dijumlah)
+  const distanceDetailRows = [];
   const voysForDist = computeVoyages(reports).filter(v => !fShip || v.ship === fShip);
+
+  const arrTypeLabel = (type, cross) => {
+    const base = type === "arr_berth" ? "Arrival Berthing" : type === "arr_anchor" ? "Arrival Anchorage" : (type || "Arrival");
+    return cross ? `${base} (ttl_dist - drun+(spd*12))` : base;
+  };
 
   // Crossing-month estimate: prefer noon on calendar last day of month;
   // if none (e.g. noon only on 30th while month ends 31st), use LAST noon of that month.
@@ -4559,6 +4559,14 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     return pool[0];
   };
 
+  const noonEstLabel = "Noon Report (drun+(spd*12))";
+  const calcEstFromNoon = (noon) => {
+    if (!noon) return 0;
+    const drun = parseFloat(noon.drun) || 0;
+    const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
+    return drun + spd * 12;
+  };
+
   distanceEntries.forEach(e => {
     const voyObj = voysForDist.find(v => v.ship === e.ship && v.no === e.voy);
     const depTs = voyObj?.dep?.ts;
@@ -4569,7 +4577,13 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
       // No departure info — attribute fully to arrival month
       const yearOk  = !fYear  || arrYear === Number(fYear);
       const monthOk = !fMonth || arrMonth === Number(fMonth);
-      if (yearOk && monthOk) totalDistance += e.dist;
+      if (yearOk && monthOk) {
+        totalDistance += e.dist;
+        distanceDetailRows.push({
+          ship: e.ship, voy: e.voy, ts: e.ts, dist: e.dist, type: e.type,
+          label: arrTypeLabel(e.type, false),
+        });
+      }
       return;
     }
 
@@ -4577,26 +4591,51 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     const depYear = depDate.getFullYear(), depMonth = depDate.getMonth();
 
     if (depYear === arrYear && depMonth === arrMonth) {
-      // Same month — simple case
+      // Same month — full ttl_dist
       const yearOk  = !fYear  || arrYear === Number(fYear);
       const monthOk = !fMonth || arrMonth === Number(fMonth);
-      if (yearOk && monthOk) totalDistance += e.dist;
+      if (yearOk && monthOk) {
+        totalDistance += e.dist;
+        distanceDetailRows.push({
+          ship: e.ship, voy: e.voy, ts: e.ts, dist: e.dist, type: e.type,
+          label: arrTypeLabel(e.type, false),
+        });
+      }
     } else {
-      // Crosses month boundary — find noon report on last day of departure month
+      // Crosses month boundary
       const crossingNoon = getNoonOnLastDayOfMonth(e.ship, e.voy, depYear, depMonth);
-      const estCrossDist = crossingNoon
-        ? (parseFloat(crossingNoon.drun) || 0) + (parseFloat(crossingNoon.spd) || 0) * 12
-        : 0;
+      const estCrossDist = calcEstFromNoon(crossingNoon);
+      const remainder = Math.max(0, e.dist - estCrossDist);
 
-      // Departure month gets estCrossDist
+      // Departure month → estCrossDist (noon)
       const depYearOk  = !fYear  || depYear === Number(fYear);
       const depMonthOk = !fMonth || depMonth === Number(fMonth);
-      if (depYearOk && depMonthOk) totalDistance += estCrossDist;
+      if (depYearOk && depMonthOk && estCrossDist > 0) {
+        totalDistance += estCrossDist;
+        distanceDetailRows.push({
+          ship: e.ship,
+          voy: e.voy,
+          ts: crossingNoon?.ts || depTs,
+          dist: estCrossDist,
+          type: "noon_est",
+          label: noonEstLabel,
+        });
+      }
 
-      // Arrival month gets remainder
+      // Arrival month → ttl_dist - estCrossDist
       const arrYearOk  = !fYear  || arrYear === Number(fYear);
       const arrMonthOk = !fMonth || arrMonth === Number(fMonth);
-      if (arrYearOk && arrMonthOk) totalDistance += Math.max(0, e.dist - estCrossDist);
+      if (arrYearOk && arrMonthOk) {
+        totalDistance += remainder;
+        distanceDetailRows.push({
+          ship: e.ship,
+          voy: e.voy,
+          ts: e.ts,
+          dist: remainder,
+          type: e.type,
+          label: arrTypeLabel(e.type, true),
+        });
+      }
     }
   });
 
@@ -4612,20 +4651,17 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
       const noon = getNoonOnLastDayOfMonth(v.ship, v.no, targetYear, targetMonth);
       if (!noon) return;
 
-      const drun = parseFloat(noon.drun) || 0;
-      const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
-      const estDist = drun + spd * 12;
+      const estDist = calcEstFromNoon(noon);
       if (!(estDist > 0)) return;
 
       totalDistance += estDist;
-      // Rincian: tipe = Noon Report (drun+(spd*12))
       distanceDetailRows.push({
         ship: v.ship,
         voy: v.no,
         ts: noon.ts,
         dist: estDist,
         type: "noon_est",
-        label: "Noon Report (drun+(spd*12))",
+        label: noonEstLabel,
       });
     });
   }
@@ -5154,11 +5190,11 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
                     ["Nama Kapal","Voy","Tanggal","Jenis Laporan","Distance (NM)"],
                     distanceDetailRows,
                     row => {
-                      const typeLabel =
-                        row.type === "arr_berth" ? "Arrival Berthing" :
-                        row.type === "arr_anchor" ? "Arrival Anchorage" :
-                        row.type === "noon_est" || row.label ? (row.label || "Noon Report (drun+(spd*12))") :
-                        String(row.type || "—");
+                      const typeLabel = row.label
+                        || (row.type === "arr_berth" ? "Arrival Berthing"
+                          : row.type === "arr_anchor" ? "Arrival Anchorage"
+                          : row.type === "noon_est" ? "Noon Report (drun+(spd*12))"
+                          : String(row.type || "—"));
                       return [row.ship, row.voy, fmtDT(row.ts), typeLabel, Number(row.dist).toFixed(1)];
                     },
                     parts.join("_") + ".csv"
@@ -5188,10 +5224,11 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
                       <td style={ss.td(i%2)}>{row.voy}</td>
                       <td style={ss.td(i%2)}>{fmtDT(row.ts)}</td>
                       <td style={ss.td(i%2)}>{
-                        row.type === "arr_berth" ? "Arrival Berthing" :
-                        row.type === "arr_anchor" ? "Arrival Anchorage" :
-                        row.type === "noon_est" ? (row.label || "Noon Report (drun+(spd*12))") :
-                        (row.label || row.type || "—")
+                        row.label
+                        || (row.type === "arr_berth" ? "Arrival Berthing"
+                          : row.type === "arr_anchor" ? "Arrival Anchorage"
+                          : row.type === "noon_est" ? "Noon Report (drun+(spd*12))"
+                          : (row.type || "—"))
                       }</td>
                       <td style={{ ...ss.td(i%2), fontWeight:600, color:C.horizon }}>{row.dist.toFixed(1)}</td>
                     </tr>

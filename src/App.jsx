@@ -167,18 +167,16 @@ function getInPortInterval(arr) {
 }
 
 function getAnchorIntervals(voyList) {
-  // Total Anchorage = Drop Anchorage/Drop Anchor (arr_anchor or shift_anchor)
-  //                 -> Anchor Up (dep_anchor or shift_berth)
+  // Anchorage time ONLY for arrival anchorage (NOT shift_anchor after direct berth).
+  // Drop Anchorage (arr_anchor) -> Anchor Up on first shift_berth (or dep_anchor).
   const intervals = [];
-  const dropReports = voyList.filter(r =>
-    (r.type === "arr_anchor" && r[evKey("Drop Anchorage")]) ||
-    (r.type === "shift_anchor" && r[evKey("Drop Anchor")])
+  const dropReports = (voyList || []).filter(r =>
+    r.type === "arr_anchor" && r[evKey("Drop Anchorage")]
   );
   dropReports.forEach(dr => {
-    const t0 = dr[evKey("Drop Anchorage")] || dr[evKey("Drop Anchor")];
-    // Anchor Up is in dep_anchor or shift_berth
-    const auReport = voyList.find(r =>
-      ["dep_anchor","shift_berth"].includes(r.type) && r[evKey("Anchor Up")]
+    const t0 = dr[evKey("Drop Anchorage")];
+    const auReport = (voyList || []).find(r =>
+      ["dep_anchor", "shift_berth"].includes(r.type) && r[evKey("Anchor Up")]
     );
     const t1 = auReport ? auReport[evKey("Anchor Up")] : null;
     if (t0) intervals.push({ t0, t1 });
@@ -2849,10 +2847,8 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     const shipVoys = voys.filter(v => v.ship === ship);
     shipVoys.sort((a,b) => new Date(a.dep?.ts||a.list[0]?.ts||0)-new Date(b.dep?.ts||b.list[0]?.ts||0));
     shipVoys.forEach((v, idx) => {
-      // Prefer FIRST shift_berth FWE; fallback arr_berth FWE (same voyage multi-shift)
-      const shiftBerth = getFirstShiftBerth(v.list);
-      const arrBerth   = (v.list||[]).find(r => r.type === "arr_berth");
-      const berthReport = shiftBerth || arrBerth;
+      // Earliest berth FWE (arr_berth direct OR first shift_berth). shift_anchor after berth ≠ anchorage.
+      const berthReport = getBerthingStartReport(v.list);
       if (!berthReport) return;
       const t0 = berthReport[evKey("FWE")] || berthReport.ts;
       if (!t0) return;
@@ -3180,9 +3176,7 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       (a, b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0)
     );
     sorted.forEach((v, idx) => {
-      const shiftBerth = getFirstShiftBerth(v.list);
-      const arrBerth = (v.list || []).find((r) => r.type === "arr_berth");
-      const berthReport = shiftBerth || arrBerth;
+      const berthReport = getBerthingStartReport(v.list);
       if (!berthReport) return;
       const t0 = berthReport[evKey("FWE")] || berthReport.ts;
       if (!t0) return;
@@ -3723,12 +3717,33 @@ function getFirstShiftBerth(list) {
   return items[0];
 }
 
+// First time vessel is at berth this voyage (earliest FWE among arr_berth / first shift_berth).
+// Direct berthing: arr_berth FWE. After re-anchor shift_anchor does NOT reset — still berthing window from first FWE.
+// Anchorage path: arr_anchor → first shift_berth FWE.
+function getBerthingStartReport(list) {
+  const candidates = [];
+  const arrBerth = (list || []).find((r) => r.type === "arr_berth");
+  if (arrBerth) candidates.push(arrBerth);
+  const firstSB = getFirstShiftBerth(list);
+  if (firstSB) candidates.push(firstSB);
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => {
+    const ta = new Date(a[evKey("FWE")] || a.ts || 0).getTime();
+    const tb = new Date(b[evKey("FWE")] || b.ts || 0).getTime();
+    return ta - tb;
+  });
+  return candidates[0];
+}
+
+
 function getAnchorageTimeEntries(reports) {
+  // ONLY arrival anchorage → first shift_berth FWE.
+  // Direct arr_berth / later shift_anchor = NOT anchorage time (stays berthing).
   const voys = computeVoyages(reports);
   const entries = [];
   voys.forEach(v => {
     const arrAnc = (v.list||[]).find(r => r.type === "arr_anchor");
-    if (!arrAnc) return;
+    if (!arrAnc) return; // no arr_anchor → no anchorage time
     const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
     if (!t0) return;
 
@@ -3752,9 +3767,7 @@ function getBerthingTimeEntries(reports) {
   Object.values(byShip).forEach(shipVoys => {
     shipVoys.sort((a,b)=>new Date(a.dep?.ts||a.list[0]?.ts||0)-new Date(b.dep?.ts||b.list[0]?.ts||0));
     shipVoys.forEach((v, idx) => {
-      const shiftBerth = getFirstShiftBerth(v.list);
-      const arrBerth   = (v.list||[]).find(r => r.type === "arr_berth");
-      const berthReport = shiftBerth || arrBerth;
+      const berthReport = getBerthingStartReport(v.list);
       if (!berthReport) return;
       const t0 = berthReport[evKey("FWE")] || berthReport.ts;
       if (!t0) return;

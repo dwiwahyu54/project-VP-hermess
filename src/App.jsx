@@ -1932,16 +1932,16 @@ function getEventVal(report, key) {
 // status: UNDERWAY | AT ANCHOR | AT BERTH | IN PORT
 // phaseSinceH: hours in current phase only
 function getShipCurrentStatus(ship, voys) {
+  // Find voyages for this ship
   const shipVoys = voys.filter(v => v.ship === ship);
-  shipVoys.sort((a, b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0));
-  const now = new Date().toISOString();
+  shipVoys.sort((a,b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0));
 
-  // 1) Underway
+  // Find voyage that is currently underway (has BOSV, no EOSV)
   const underwayVoy = shipVoys.find(v => v.bosv && !v.eosv);
   if (underwayVoy) {
     return {
       status: "UNDERWAY",
-      sailingH: diffH(underwayVoy.bosv, now),
+      sailingH: diffH(underwayVoy.bosv, new Date().toISOString()),
       inPortH: null,
       anchH: 0,
       berthH: 0,
@@ -1949,100 +1949,138 @@ function getShipCurrentStatus(ship, voys) {
     };
   }
 
-  // 2) In port — last arrived voyage
+  // No underway voyage - find the last completed voyage (has EOSV)
+  // This means ship is IN PORT (waiting for next departure)
   const completedVoys = shipVoys.filter(v => v.eosv);
   if (completedVoys.length > 0) {
+    // Sort by EOSV date, get the most recent
     completedVoys.sort((a, b) => new Date(b.eosv) - new Date(a.eosv));
     const lastVoy = completedVoys[0];
-    const list = lastVoy.list || [];
 
-    const phaseTs = (r) => {
-      if (!r) return 0;
-      if (r.type === "arr_anchor" || r.type === "shelter_arr")
-        return new Date(getEventVal(r, evKey("SBE/EOSV")) || r.ts || 0).getTime();
-      if (r.type === "shift_anchor")
-        return new Date(getEventVal(r, evKey("Drop Anchor")) || getEventVal(r, evKey("FWE")) || r.ts || 0).getTime();
-      if (r.type === "arr_berth" || r.type === "shift_berth")
-        return new Date(getEventVal(r, evKey("FWE")) || r.ts || 0).getTime();
-      return new Date(r.ts || 0).getTime();
-    };
-
-    const phaseReports = list.filter(r =>
-      ["arr_anchor", "shift_anchor", "arr_berth", "shift_berth", "shelter_arr"].includes(r.type)
-    );
-    phaseReports.sort((a, b) => phaseTs(b) - phaseTs(a));
-    const latest = phaseReports[0];
-
-    // Badge status from latest ops report
-    let status = "IN PORT";
-    if (latest) {
-      if (["arr_anchor", "shift_anchor", "shelter_arr"].includes(latest.type)) status = "AT ANCHOR";
-      else if (["arr_berth", "shift_berth"].includes(latest.type)) status = "AT BERTH";
-    }
-
-    // Card body hours (like original): anchH / berthH segments + total in port
+    // Calculate anchorage and berthing time separately (ORIGINAL formula)
+    // Anchorage: SBE/EOSV (arr_anchor ONLY, NOT shelter) → FWE (shift_berth)
+    // Berthing: FWE (shift_berth) → EOSV or current time
     let anchH = 0;
     let berthH = 0;
-    const arrAnchReport = list.find(r => r.type === "arr_anchor");
-    const arrBerthReport = list.find(r => r.type === "arr_berth");
-    const shiftBerthReport = getFirstShiftBerth(list);
+
+    const now = new Date().toISOString();
+
+    // Find arrival anchorage report (arr_anchor ONLY, not shelter_arr)
+    const arrAnchReport = (lastVoy.list || []).find(r => r.type === "arr_anchor");
+    const arrBerthReport = (lastVoy.list || []).find(r => r.type === "arr_berth");
+    const shiftBerthReport = getFirstShiftBerth(lastVoy.list);
     const fweArrBerth = arrBerthReport ? (getEventVal(arrBerthReport, evKey("FWE")) || null) : null;
+    // Get FWE from shift_berth (events are spread to root after loading)
     const fweShift = shiftBerthReport ? (getEventVal(shiftBerthReport, evKey("FWE")) || null) : null;
-    const shiftAnchorReport = list.find(r => r.type === "shift_anchor");
-    const shiftAnchorTs = shiftAnchorReport
-      ? (getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts)
-      : null;
 
     if (arrBerthReport && fweArrBerth) {
-      // Direct berth
-      if (shiftAnchorTs && new Date(shiftAnchorTs) > new Date(fweArrBerth)) {
-        berthH = diffH(fweArrBerth, shiftAnchorTs);
-        anchH = diffH(shiftAnchorTs, now);
+      // Berth arrival: FWE (arr_berth) → current time
+      // Check if ship later shifted to anchor
+      const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
+      if (shiftAnchorReport) {
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts;
+        berthH = diffH(fweArrBerth, fweShiftAnchor);
+        anchH = diffH(fweShiftAnchor, now);
       } else {
         berthH = diffH(fweArrBerth, now);
       }
-    } else if (arrAnchReport && fweShift) {
-      const sbe = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
-      anchH = diffH(sbe, fweShift);
-      if (shiftAnchorTs && new Date(shiftAnchorTs) > new Date(fweShift)) {
-        berthH = diffH(fweShift, shiftAnchorTs);
-        anchH += diffH(shiftAnchorTs, now);
+
+    } else if (shiftBerthReport && fweShift) {
+      // Berth shift: FWE (shift_berth) → current time
+      berthH = diffH(fweShift, now);
+
+    } else if (arrBerthReport && !fweArrBerth) {
+      // arr_berth exists but FWE not filled yet - treat as in-port berthing start from report time
+      // Check if ship later shifted to anchor
+      const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
+      if (shiftAnchorReport) {
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts;
+        berthH = diffH(arrBerthReport.ts, fweShiftAnchor);
+        anchH = diffH(fweShiftAnchor, now);
+      } else {
+        berthH = diffH(arrBerthReport.ts, now);
+      }
+
+    } else if (arrAnchReport && shiftBerthReport && fweShift) {
+      // Anchorage: SBE/EOSV (arr_anchor) → FWE (shift_berth)
+      const sbeEosv = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
+      anchH = diffH(sbeEosv, fweShift);
+      // Berthing: FWE (shift_berth) → current time
+      // Check if ship later shifted to anchor again
+      const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
+      if (shiftAnchorReport) {
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts;
+        berthH = diffH(fweShift, fweShiftAnchor);
+        anchH += diffH(fweShiftAnchor, now);
       } else {
         berthH = diffH(fweShift, now);
       }
-    } else if (arrAnchReport && !fweShift) {
-      const sbe = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
-      anchH = diffH(sbe, now);
-    } else if (fweShift) {
-      if (shiftAnchorTs && new Date(shiftAnchorTs) > new Date(fweShift)) {
-        berthH = diffH(fweShift, shiftAnchorTs);
-        anchH = diffH(shiftAnchorTs, now);
+
+    } else if (arrAnchReport && !shiftBerthReport) {
+      // Still at anchor (arr_anchor exists but no shift_berth yet)
+      const sbeEosv = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
+      anchH = diffH(sbeEosv, now);
+
+    } else if (arrAnchReport && shiftBerthReport && !fweShift) {
+      // shift_berth exists but FWE not filled yet - still at anchor
+      const sbeEosv = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
+      anchH = diffH(sbeEosv, now);
+
+    } else if (shiftBerthReport && fweShift) {
+      // Direct shift without arr_anchor (e.g., shift_bb) - berthing only
+      // But check if ship later shifted to anchor again
+      const shiftAnchorReport = (lastVoy.list || []).find(r => r.type === "shift_anchor");
+      if (shiftAnchorReport) {
+        // Ship shifted from berth to anchor
+        const fweShiftAnchor = getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts;
+        berthH = diffH(fweShift, fweShiftAnchor);
+        anchH = diffH(fweShiftAnchor, now);
       } else {
-        berthH = diffH(fweShift, now);
+        const endTime = lastVoy.eosv || now;
+        berthH = diffH(fweShift, endTime);
       }
-    } else if (latest) {
-      // fallback: only current phase
-      if (status === "AT ANCHOR") {
-        const t0 = getEventVal(latest, evKey("Drop Anchor")) || getEventVal(latest, evKey("SBE/EOSV")) || latest.ts;
-        anchH = diffH(t0, now);
-      } else if (status === "AT BERTH") {
-        const t0 = getEventVal(latest, evKey("FWE")) || latest.ts;
-        berthH = diffH(t0, now);
-      }
+
     }
 
-    const inPortH = lastVoy.eosv ? diffH(lastVoy.eosv, now) : (anchH + berthH);
+    // Final check: sort reports by time, use latest to determine anch/berth status
+    // (ORIGINAL time override + badge from latest report)
+    let status = "IN PORT";
+    if (lastVoy) {
+      const sortedReports = [...(lastVoy.list || [])].sort((a,b) => new Date(b.ts) - new Date(a.ts));
+      const latest = sortedReports[0];
+      if (latest && (latest.type === "shift_anchor" || latest.type === "arr_anchor")) {
+        const anchorTs = getEventVal(latest, evKey("Drop Anchor")) || getEventVal(latest, evKey("SBE/EOSV")) || latest.ts;
+        anchH = diffH(anchorTs, new Date().toISOString());
+        berthH = 0;
+        status = "AT ANCHOR";
+      } else if (latest && (latest.type === "arr_berth" || latest.type === "shift_berth")) {
+        const berthTs = getEventVal(latest, evKey("FWE")) || latest.ts;
+        berthH = diffH(berthTs, new Date().toISOString());
+        anchH = 0;
+        status = "AT BERTH";
+      } else if (latest && latest.type === "shelter_arr") {
+        const t0 = getEventVal(latest, evKey("SBE/EOSV")) || latest.ts;
+        anchH = diffH(t0, new Date().toISOString());
+        berthH = 0;
+        status = "AT ANCHOR";
+      } else if (anchH > 0 && berthH <= 0) {
+        status = "AT ANCHOR";
+      } else if (berthH > 0) {
+        status = "AT BERTH";
+      }
+    }
 
     return {
       status,
       sailingH: null,
-      inPortH,
-      anchH,
-      berthH,
-      activeVoy: lastVoy,
+      inPortH: anchH + berthH,
+      anchH: anchH,
+      berthH: berthH,
+      activeVoy: lastVoy
     };
   }
 
+  // No voyages at all - show as IN PORT (default state)
   return { status: "IN PORT", sailingH: null, inPortH: 0, anchH: 0, berthH: 0, activeVoy: null };
 }
 

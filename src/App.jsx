@@ -2042,27 +2042,50 @@ function getShipCurrentStatus(ship, voys) {
 
     }
 
-    // Final check: sort reports by time, use latest to determine anch/berth status
-    // (ORIGINAL time override + badge from latest report)
+    // Final status: latest *phase* report by EVENT time (not report.ts).
+    // Otherwise arr_berth with newer save-ts can override a later shift_anchor event.
     let status = "IN PORT";
     if (lastVoy) {
-      const sortedReports = [...(lastVoy.list || [])].sort((a,b) => new Date(b.ts) - new Date(a.ts));
-      const latest = sortedReports[0];
-      if (latest && (latest.type === "shift_anchor" || latest.type === "arr_anchor")) {
-        const anchorTs = getEventVal(latest, evKey("Drop Anchor")) || getEventVal(latest, evKey("SBE/EOSV")) || latest.ts;
-        anchH = diffH(anchorTs, new Date().toISOString());
-        berthH = 0;
+      const phaseTime = (r) => {
+        if (!r) return 0;
+        if (r.type === "shift_anchor")
+          return new Date(getEventVal(r, evKey("Drop Anchor")) || getEventVal(r, evKey("FWE")) || r.ts || 0).getTime();
+        if (r.type === "arr_anchor" || r.type === "shelter_arr")
+          return new Date(getEventVal(r, evKey("SBE/EOSV")) || r.ts || 0).getTime();
+        if (r.type === "arr_berth" || r.type === "shift_berth")
+          return new Date(getEventVal(r, evKey("FWE")) || r.ts || 0).getTime();
+        return new Date(r.ts || 0).getTime();
+      };
+      const phaseReports = (lastVoy.list || []).filter(r =>
+        ["arr_anchor", "shift_anchor", "arr_berth", "shift_berth", "shelter_arr"].includes(r.type)
+      );
+      phaseReports.sort((a, b) => phaseTime(b) - phaseTime(a));
+      const latest = phaseReports[0];
+
+      if (latest && (latest.type === "shift_anchor" || latest.type === "arr_anchor" || latest.type === "shelter_arr")) {
+        const anchorTs =
+          getEventVal(latest, evKey("Drop Anchor")) ||
+          getEventVal(latest, evKey("SBE/EOSV")) ||
+          latest.ts;
+        // Keep segment hours from formula above; only force "current phase" clock if needed
+        // For live status timer on active anchor: show time since this anchor event
+        const since = diffH(anchorTs, new Date().toISOString());
+        if (latest.type === "shift_anchor" || latest.type === "shelter_arr") {
+          // Currently at anchor after berth (or shelter): current phase = anchor
+          anchH = since;
+          // berthH already computed as prior segment; keep if > 0, else 0
+        } else {
+          // still on first arrival anchorage
+          anchH = since;
+          berthH = 0;
+        }
         status = "AT ANCHOR";
       } else if (latest && (latest.type === "arr_berth" || latest.type === "shift_berth")) {
         const berthTs = getEventVal(latest, evKey("FWE")) || latest.ts;
-        berthH = diffH(berthTs, new Date().toISOString());
-        anchH = 0;
+        const since = diffH(berthTs, new Date().toISOString());
+        berthH = since;
+        // keep anchH from prior segment formula (arr_anchor → first FWE) if any
         status = "AT BERTH";
-      } else if (latest && latest.type === "shelter_arr") {
-        const t0 = getEventVal(latest, evKey("SBE/EOSV")) || latest.ts;
-        anchH = diffH(t0, new Date().toISOString());
-        berthH = 0;
-        status = "AT ANCHOR";
       } else if (anchH > 0 && berthH <= 0) {
         status = "AT ANCHOR";
       } else if (berthH > 0) {

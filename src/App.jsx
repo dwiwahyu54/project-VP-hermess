@@ -1969,7 +1969,7 @@ function getShipCurrentStatus(ship, voys) {
     // Find arrival anchorage report (arr_anchor ONLY, not shelter_arr)
     const arrAnchReport = (lastVoy.list || []).find(r => r.type === "arr_anchor");
     const arrBerthReport = (lastVoy.list || []).find(r => r.type === "arr_berth");
-    const shiftBerthReport = (lastVoy.list || []).find(r => r.type === "shift_berth");
+    const shiftBerthReport = getFirstShiftBerth(lastVoy.list);
     const fweArrBerth = arrBerthReport ? (getEventVal(arrBerthReport, evKey("FWE")) || null) : null;
     // Get FWE from shift_berth (events are spread to root after loading)
     const fweShift = shiftBerthReport ? (getEventVal(shiftBerthReport, evKey("FWE")) || null) : null;
@@ -2826,7 +2826,8 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       if (!arrAnc) return;
       const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
       if (!t0) return;
-      const shiftBerth = (v.list||[]).find(r => r.type === "shift_berth");
+      // FIRST shift_berth FWE (multi shift still one voyage until Compl Load)
+      const shiftBerth = getFirstShiftBerth(v.list);
       const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
       const segs = splitByMonth(t0, t1);
       segs.forEach(seg => {
@@ -2848,7 +2849,8 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     const shipVoys = voys.filter(v => v.ship === ship);
     shipVoys.sort((a,b) => new Date(a.dep?.ts||a.list[0]?.ts||0)-new Date(b.dep?.ts||b.list[0]?.ts||0));
     shipVoys.forEach((v, idx) => {
-      const shiftBerth = (v.list||[]).find(r => r.type === "shift_berth");
+      // Prefer FIRST shift_berth FWE; fallback arr_berth FWE (same voyage multi-shift)
+      const shiftBerth = getFirstShiftBerth(v.list);
       const arrBerth   = (v.list||[]).find(r => r.type === "arr_berth");
       const berthReport = shiftBerth || arrBerth;
       if (!berthReport) return;
@@ -3163,7 +3165,7 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       if (!arrAnc) return;
       const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
       if (!t0) return;
-      const shiftBerth = (v.list || []).find((r) => r.type === "shift_berth");
+      const shiftBerth = getFirstShiftBerth(v.list);
       const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
       splitByMonth(t0, t1).forEach((seg) => {
         if (seg.year === perfPrevYear && seg.month === perfPrevMonth) {
@@ -3178,7 +3180,7 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       (a, b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0)
     );
     sorted.forEach((v, idx) => {
-      const shiftBerth = (v.list || []).find((r) => r.type === "shift_berth");
+      const shiftBerth = getFirstShiftBerth(v.list);
       const arrBerth = (v.list || []).find((r) => r.type === "arr_berth");
       const berthReport = shiftBerth || arrBerth;
       if (!berthReport) return;
@@ -3707,6 +3709,20 @@ function downtimeHoursInRange(reports, ship, rangeStart, rangeEnd) {
 
 // --- MANAGEMENT REPORT ==========================================================
 // Anchorage time: arr_anchor SBE/EOSV -> shift_berth FWE − downtime in interval
+// Earliest shift_berth report in a voyage list (by FWE / ts).
+// Multi-shift sequence: arr_anchor → shift_berth → shift_anchor → shift_berth
+// still ONE voyage (same voy no); anchorage ends / berthing starts at FIRST FWE.
+function getFirstShiftBerth(list) {
+  const items = (list || []).filter((r) => r.type === "shift_berth");
+  if (!items.length) return null;
+  items.sort((a, b) => {
+    const ta = new Date(a[evKey("FWE")] || a.ts || 0).getTime();
+    const tb = new Date(b[evKey("FWE")] || b.ts || 0).getTime();
+    return ta - tb;
+  });
+  return items[0];
+}
+
 function getAnchorageTimeEntries(reports) {
   const voys = computeVoyages(reports);
   const entries = [];
@@ -3716,10 +3732,10 @@ function getAnchorageTimeEntries(reports) {
     const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
     if (!t0) return;
 
-    const shiftBerth = (v.list||[]).find(r => r.type === "shift_berth");
-    // If shift_berth with FWE exists, anchorage has ended at that point.
-    // Otherwise the vessel is STILL at anchorage — use "now" as the open end,
-    // so month-by-month splitting still counts the ongoing duration correctly.
+    // FIRST shift_berth only (later shift_berth after re-anchor still same voyage)
+    const shiftBerth = getFirstShiftBerth(v.list);
+    // If first shift_berth FWE exists, anchorage has ended at that point.
+    // Otherwise still at anchorage — open end = now for month split.
     const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
 
     entries.push({ ship: v.ship, voy: v.no, t0, t1 });
@@ -3736,7 +3752,7 @@ function getBerthingTimeEntries(reports) {
   Object.values(byShip).forEach(shipVoys => {
     shipVoys.sort((a,b)=>new Date(a.dep?.ts||a.list[0]?.ts||0)-new Date(b.dep?.ts||b.list[0]?.ts||0));
     shipVoys.forEach((v, idx) => {
-      const shiftBerth = (v.list||[]).find(r => r.type === "shift_berth");
+      const shiftBerth = getFirstShiftBerth(v.list);
       const arrBerth   = (v.list||[]).find(r => r.type === "arr_berth");
       const berthReport = shiftBerth || arrBerth;
       if (!berthReport) return;

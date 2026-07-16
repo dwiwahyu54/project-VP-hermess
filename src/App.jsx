@@ -1936,29 +1936,26 @@ function getShipCurrentStatus(ship, voys) {
   shipVoys.sort((a, b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0));
   const now = new Date().toISOString();
 
-  // 1) Underway: has BOSV, no arrival EOSV yet
+  // 1) Underway
   const underwayVoy = shipVoys.find(v => v.bosv && !v.eosv);
   if (underwayVoy) {
     return {
       status: "UNDERWAY",
-      phase: "UNDERWAY",
       sailingH: diffH(underwayVoy.bosv, now),
       inPortH: null,
-      phaseSinceH: diffH(underwayVoy.bosv, now),
       anchH: 0,
       berthH: 0,
       activeVoy: underwayVoy,
     };
   }
 
-  // 2) In port: last voyage that has arrival (eosv) — determine ANCHOR vs BERTH from latest ops report
+  // 2) In port — last arrived voyage
   const completedVoys = shipVoys.filter(v => v.eosv);
   if (completedVoys.length > 0) {
     completedVoys.sort((a, b) => new Date(b.eosv) - new Date(a.eosv));
     const lastVoy = completedVoys[0];
     const list = lastVoy.list || [];
 
-    // Score report "phase time" for sorting (prefer event stamp over report ts)
     const phaseTs = (r) => {
       if (!r) return 0;
       if (r.type === "arr_anchor" || r.type === "shelter_arr")
@@ -1976,57 +1973,77 @@ function getShipCurrentStatus(ship, voys) {
     phaseReports.sort((a, b) => phaseTs(b) - phaseTs(a));
     const latest = phaseReports[0];
 
+    // Badge status from latest ops report
     let status = "IN PORT";
-    let phaseSinceH = 0;
-    let anchH = 0;
-    let berthH = 0;
-    let phaseStart = null;
-
     if (latest) {
-      if (latest.type === "arr_anchor" || latest.type === "shift_anchor" || latest.type === "shelter_arr") {
-        status = "AT ANCHOR";
-        phaseStart =
-          getEventVal(latest, evKey("Drop Anchor")) ||
-          getEventVal(latest, evKey("SBE/EOSV")) ||
-          latest.ts;
-        phaseSinceH = diffH(phaseStart, now);
-        anchH = phaseSinceH;
-      } else if (latest.type === "arr_berth" || latest.type === "shift_berth") {
-        status = "AT BERTH";
-        phaseStart = getEventVal(latest, evKey("FWE")) || latest.ts;
-        phaseSinceH = diffH(phaseStart, now);
-        berthH = phaseSinceH;
-      }
-    } else {
-      // arrived but no detail events — still in port
-      phaseSinceH = lastVoy.eosv ? diffH(lastVoy.eosv, now) : 0;
+      if (["arr_anchor", "shift_anchor", "shelter_arr"].includes(latest.type)) status = "AT ANCHOR";
+      else if (["arr_berth", "shift_berth"].includes(latest.type)) status = "AT BERTH";
     }
 
-    // Total in-port since arrival (for secondary info)
-    const inPortH = lastVoy.eosv ? diffH(lastVoy.eosv, now) : phaseSinceH;
+    // Card body hours (like original): anchH / berthH segments + total in port
+    let anchH = 0;
+    let berthH = 0;
+    const arrAnchReport = list.find(r => r.type === "arr_anchor");
+    const arrBerthReport = list.find(r => r.type === "arr_berth");
+    const shiftBerthReport = getFirstShiftBerth(list);
+    const fweArrBerth = arrBerthReport ? (getEventVal(arrBerthReport, evKey("FWE")) || null) : null;
+    const fweShift = shiftBerthReport ? (getEventVal(shiftBerthReport, evKey("FWE")) || null) : null;
+    const shiftAnchorReport = list.find(r => r.type === "shift_anchor");
+    const shiftAnchorTs = shiftAnchorReport
+      ? (getEventVal(shiftAnchorReport, evKey("Drop Anchor")) || shiftAnchorReport.ts)
+      : null;
+
+    if (arrBerthReport && fweArrBerth) {
+      // Direct berth
+      if (shiftAnchorTs && new Date(shiftAnchorTs) > new Date(fweArrBerth)) {
+        berthH = diffH(fweArrBerth, shiftAnchorTs);
+        anchH = diffH(shiftAnchorTs, now);
+      } else {
+        berthH = diffH(fweArrBerth, now);
+      }
+    } else if (arrAnchReport && fweShift) {
+      const sbe = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
+      anchH = diffH(sbe, fweShift);
+      if (shiftAnchorTs && new Date(shiftAnchorTs) > new Date(fweShift)) {
+        berthH = diffH(fweShift, shiftAnchorTs);
+        anchH += diffH(shiftAnchorTs, now);
+      } else {
+        berthH = diffH(fweShift, now);
+      }
+    } else if (arrAnchReport && !fweShift) {
+      const sbe = getEventVal(arrAnchReport, evKey("SBE/EOSV")) || arrAnchReport.ts;
+      anchH = diffH(sbe, now);
+    } else if (fweShift) {
+      if (shiftAnchorTs && new Date(shiftAnchorTs) > new Date(fweShift)) {
+        berthH = diffH(fweShift, shiftAnchorTs);
+        anchH = diffH(shiftAnchorTs, now);
+      } else {
+        berthH = diffH(fweShift, now);
+      }
+    } else if (latest) {
+      // fallback: only current phase
+      if (status === "AT ANCHOR") {
+        const t0 = getEventVal(latest, evKey("Drop Anchor")) || getEventVal(latest, evKey("SBE/EOSV")) || latest.ts;
+        anchH = diffH(t0, now);
+      } else if (status === "AT BERTH") {
+        const t0 = getEventVal(latest, evKey("FWE")) || latest.ts;
+        berthH = diffH(t0, now);
+      }
+    }
+
+    const inPortH = lastVoy.eosv ? diffH(lastVoy.eosv, now) : (anchH + berthH);
 
     return {
       status,
-      phase: status,
       sailingH: null,
       inPortH,
-      phaseSinceH,
       anchH,
       berthH,
       activeVoy: lastVoy,
     };
   }
 
-  return {
-    status: "IN PORT",
-    phase: "IN PORT",
-    sailingH: null,
-    inPortH: 0,
-    phaseSinceH: 0,
-    anchH: 0,
-    berthH: 0,
-    activeVoy: null,
-  };
+  return { status: "IN PORT", sailingH: null, inPortH: 0, anchH: 0, berthH: 0, activeVoy: null };
 }
 
 // --- DASHBOARD ----------------------------------------------------------------
@@ -2564,7 +2581,7 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
           STATUS KAPAL
         </div>
         <div className="voyage-card-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:8 }}>
-          {shipStatuses.map(({ ship, status, sailingH, inPortH, phaseSinceH, activeVoy, anchH, berthH }) => {
+          {shipStatuses.map(({ ship, status, sailingH, inPortH, activeVoy, anchH, berthH }) => {
             const statusColor =
               status === "UNDERWAY" ? C.green :
               status === "AT ANCHOR" ? C.amber :
@@ -2574,7 +2591,6 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
             const destDisplay = status === "UNDERWAY" ? activeVoy?.dep?.dest : null;
             const noonETA = status === "UNDERWAY" ? getLatestNoonETA(ship, activeVoy?.no) : null;
             const etaDisplay = noonETA || (status === "UNDERWAY" ? activeVoy?.dep?.eta_dest : null);
-            const sinceH = phaseSinceH != null ? phaseSinceH : (status === "UNDERWAY" ? sailingH : inPortH);
 
             return (
               <div key={ship} style={{ ...ss.card(`${statusColor}40`), borderTop:`2px solid ${statusColor}`, marginBottom:0, padding:"10px 12px", textAlign:"left" }}>
@@ -2593,16 +2609,17 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
                 ) : (
                   <>
                     <div style={{ fontSize:11, marginBottom:2, textAlign:"left" }}>
-                      <span style={{color:C.muted}}>
-                        {status === "AT ANCHOR" ? "Di anchorage: " : status === "AT BERTH" ? "Di berth: " : "In port: "}
-                      </span>
-                      <strong style={{color:statusColor}}>{fmtH(sinceH || 0)}</strong>
+                      <span style={{color:C.muted}}>{status === "AT ANCHOR" ? "→ " : ""}Anch: </span>
+                      <strong style={{color: status === "AT ANCHOR" ? C.amber : C.muted}}>{fmtH(anchH || 0)}</strong>
                     </div>
-                    {status === "AT ANCHOR" || status === "AT BERTH" ? (
-                      <div style={{ fontSize:10, color:C.muted, textAlign:"left" }}>
-                        (sejak laporan {status === "AT ANCHOR" ? "anchor" : "berth"} terakhir)
-                      </div>
-                    ) : null}
+                    <div style={{ fontSize:11, marginBottom:2, textAlign:"left" }}>
+                      <span style={{color:C.muted}}>{status === "AT BERTH" ? "→ " : ""}Berth: </span>
+                      <strong style={{color: status === "AT BERTH" ? C.horizon : C.muted}}>{fmtH(berthH || 0)}</strong>
+                    </div>
+                    <div style={{ fontSize:11, textAlign:"left" }}>
+                      <span style={{color:C.muted}}>In Port: </span>
+                      <strong style={{color:statusColor}}>{fmtH(inPortH || 0)}</strong>
+                    </div>
                   </>
                 )}
                 {activeVoy?.dtH > 0 && (

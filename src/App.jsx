@@ -2815,7 +2815,8 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     DowntimeDaysByShip[ship] = matchedH / 24;
   });
 
-  // Per-ship Anchorage (hari): arr_anchor SBE/EOSV → shift_berth FWE
+  // Per-ship Anchorage (hari): SBE/EOSV arr_anchor → FWE shift_berth − downtime in that window
+  // Downtime that crosses FWE is auto-split (only portion before FWE counts here)
   const AnchorageDaysByShip = {};
   [...new Set(voys.map(v => v.ship))].forEach(ship => {
     const shipVoys = (voys || []).filter(v => v.ship === ship);
@@ -2831,13 +2832,17 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       segs.forEach(seg => {
         const yearOk = !fYear || seg.year === Number(fYear);
         const monthOk = !fMonth || seg.month === Number(fMonth);
-        if (yearOk && monthOk) anchH += seg.hours;
+        if (yearOk && monthOk) {
+          const dtH = downtimeHoursInRange(reports, ship, seg.start, seg.end);
+          anchH += Math.max(0, seg.hours - dtH);
+        }
       });
     });
     AnchorageDaysByShip[ship] = anchH / 24;
   });
 
-  // Per-ship Berthing (hours): shift_berth FWE (or arr_berth FWE) → BOSV of NEXT voyage
+  // Per-ship Berthing (hours): FWE shift_berth/arr_berth → BOSV next voyage − downtime in window
+  // Downtime crossing FWE: only portion after FWE counts as berthing downtime
   const BerthingHoursByShip = {};
   [...new Set(voys.map(v => v.ship))].forEach(ship => {
     const shipVoys = voys.filter(v => v.ship === ship);
@@ -2856,7 +2861,8 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
         const yearOk = !fYear || seg.year === Number(fYear);
         const monthOk = !fMonth || seg.month === Number(fMonth);
         if (yearOk && monthOk) {
-          BerthingHoursByShip[ship] = (BerthingHoursByShip[ship] || 0) + seg.hours;
+          const dtH = downtimeHoursInRange(reports, ship, seg.start, seg.end);
+          BerthingHoursByShip[ship] = (BerthingHoursByShip[ship] || 0) + Math.max(0, seg.hours - dtH);
         }
       });
     });
@@ -3160,7 +3166,10 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       const shiftBerth = (v.list || []).find((r) => r.type === "shift_berth");
       const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
       splitByMonth(t0, t1).forEach((seg) => {
-        if (seg.year === perfPrevYear && seg.month === perfPrevMonth) anchH += seg.hours;
+        if (seg.year === perfPrevYear && seg.month === perfPrevMonth) {
+          const dtH = downtimeHoursInRange(reports, ship, seg.start, seg.end);
+          anchH += Math.max(0, seg.hours - dtH);
+        }
       });
     });
     AnchoragePrevByShip[ship] = anchH / 24;
@@ -3179,7 +3188,8 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
       const t1 = nextV?.bosv || new Date().toISOString();
       splitByMonth(t0, t1).forEach((seg) => {
         if (seg.year === perfPrevYear && seg.month === perfPrevMonth) {
-          BerthingPrevHByShip[ship] = (BerthingPrevHByShip[ship] || 0) + seg.hours;
+          const dtH = downtimeHoursInRange(reports, ship, seg.start, seg.end);
+          BerthingPrevHByShip[ship] = (BerthingPrevHByShip[ship] || 0) + Math.max(0, seg.hours - dtH);
         }
       });
     });
@@ -3670,8 +3680,33 @@ function Modal({ report, onClose, onEdit, onDelete, allReports }) {
   );
 }
 
+// Overlap of two time ranges in hours (0 if no overlap)
+function intervalOverlapHours(t0, t1, u0, u1) {
+  const a = new Date(t0).getTime();
+  const b = new Date(t1).getTime();
+  const c = new Date(u0).getTime();
+  const d = new Date(u1).getTime();
+  if ([a, b, c, d].some((x) => isNaN(x))) return 0;
+  const s = Math.max(a, c);
+  const e = Math.min(b, d);
+  return e > s ? (e - s) / 3600000 : 0;
+}
+
+// Downtime hours for a ship that fall inside [rangeStart, rangeEnd].
+// If downtime crosses anchorage→berthing at FWE, overlap with each window
+// automatically splits it: anchorage gets start→FWE, berthing gets FWE→end.
+// Only type "downtime" (shelter not deducted from anch/berth).
+function downtimeHoursInRange(reports, ship, rangeStart, rangeEnd) {
+  let h = 0;
+  (reports || []).forEach((r) => {
+    if (r.type !== "downtime" || r.ship !== ship || !r.t0 || !r.t1) return;
+    h += intervalOverlapHours(rangeStart, rangeEnd, r.t0, r.t1);
+  });
+  return h;
+}
+
 // --- MANAGEMENT REPORT ==========================================================
-// Anchorage time: arr_anchor SBE/EOSV -> shift_berth FWE (same voyage)
+// Anchorage time: arr_anchor SBE/EOSV -> shift_berth FWE − downtime in interval
 function getAnchorageTimeEntries(reports) {
   const voys = computeVoyages(reports);
   const entries = [];
@@ -3692,7 +3727,7 @@ function getAnchorageTimeEntries(reports) {
   return entries;
 }
 
-// Berthing time: shift_berth FWE (or arr_berth FWE) -> BOSV of NEXT voyage (same ship)
+// Berthing time: shift_berth/arr_berth FWE -> BOSV next voyage − downtime in interval
 function getBerthingTimeEntries(reports) {
   const voys = computeVoyages(reports);
   const entries = [];
@@ -4470,7 +4505,7 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     downloadDowntimeCSV(matchedEntries, filenameParts.join("_") + ".csv");
   };
 
-  // --- Anchorage Time (arr_anchor SBE/EOSV -> shift_berth FWE) ---
+  // --- Anchorage Time: SBE/EOSV arr_anchor → FWE shift_berth − downtime (split at FWE if crosses) ---
   const anchorageEntries = getAnchorageTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
   let totalAnchorageH = 0;
   const anchorageDetailRows = [];
@@ -4480,17 +4515,21 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
       const yearOk  = !fYear  || seg.year === Number(fYear);
       const monthOk = !fMonth || seg.month === Number(fMonth);
       if (yearOk && monthOk) {
-        totalAnchorageH += seg.hours;
+        const dtH = downtimeHoursInRange(reports, e.ship, seg.start, seg.end);
+        const netH = Math.max(0, seg.hours - dtH);
+        totalAnchorageH += netH;
         anchorageDetailRows.push({
           ship: e.ship, voy: e.voy,
           t0: seg.start, t1: seg.end,
-          hours: seg.hours,
+          hours: netH,
+          grossHours: seg.hours,
+          downtimeHours: dtH,
         });
       }
     });
   });
 
-  // --- Berthing Time (shift_berth/arr_berth FWE -> next voyage BOSV, same ship) ---
+  // --- Berthing Time: FWE shift_berth/arr_berth → BOSV next − downtime (split at FWE if crosses) ---
   const berthingEntries = getBerthingTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
   let totalBerthingH = 0;
   
@@ -4501,11 +4540,15 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
       const yearOk  = !fYear  || seg.year === Number(fYear);
       const monthOk = !fMonth || seg.month === Number(fMonth);
       if (yearOk && monthOk) {
-        totalBerthingH += seg.hours;
+        const dtH = downtimeHoursInRange(reports, e.ship, seg.start, seg.end);
+        const netH = Math.max(0, seg.hours - dtH);
+        totalBerthingH += netH;
         berthingDetailRows.push({
           ship: e.ship, voy: e.voy,
           t0: seg.start, t1: seg.end,
-          hours: seg.hours,
+          hours: netH,
+          grossHours: seg.hours,
+          downtimeHours: dtH,
         });
       }
     });
@@ -4989,7 +5032,7 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
         >
           <div style={{ fontSize:22, fontWeight:700, color:C.amber, marginBottom:4 }}>{(totalAnchorageH/24).toFixed(2)} hari</div>
           <div style={{ fontSize:10, color:C.muted }}>Anchorage Time</div>
-          <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Arr.Anc SBE/EOSV → Shift Berth FWE {showAnchorageDetail ? "▲" : "▼"}</div>
+          <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>SBE/EOSV → FWE − DT {showAnchorageDetail ? "▲" : "▼"}</div>
         </div>
         <div
           style={{ background:C.bg3, border:`1px solid ${C.horizon}30`, borderTop:`3px solid ${C.horizon}`, borderRadius:12, padding:"16px 18px", cursor:"pointer" }}
@@ -4997,7 +5040,7 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
         >
           <div style={{ fontSize:22, fontWeight:700, color:C.horizon, marginBottom:4 }}>{(totalBerthingH/24).toFixed(2)} hari</div>
           <div style={{ fontSize:10, color:C.muted }}>Berthing Time</div>
-          <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>Berth FWE → Next Voyage BOSV {showBerthingDetail ? "▲" : "▼"}</div>
+          <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>FWE → BOSV next − DT {showBerthingDetail ? "▲" : "▼"}</div>
         </div>
         <div
           style={{ background:C.bg3, border:`1px solid ${C.green}30`, borderTop:`3px solid ${C.green}`, borderRadius:12, padding:"16px 18px", cursor:"pointer" }}

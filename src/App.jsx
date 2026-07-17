@@ -2556,14 +2556,15 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
               status === "AT ANCHOR" ? C.amber :
               status === "AT BERTH" ? C.horizon :
               C.muted;
-            // UNDERWAY: port of departure. Arrival berthing → Port = destination of departure report.
-            // Other in-port (arr_anchor only): fall back arr port / dest.
+            // UNDERWAY: port of departure.
+            // Arrival berthing OR arrival anchorage → Port = destination of departure report.
             const hasArrBerth = (activeVoy?.list || []).some((r) => r.type === "arr_berth");
+            const hasArrAnchor = (activeVoy?.list || []).some((r) => r.type === "arr_anchor");
             const depDest = activeVoy?.dep?.dest || activeVoy?.dep?.destination || "";
             const portDisplay =
               status === "UNDERWAY"
                 ? (activeVoy?.dep?.port || "—")
-                : (hasArrBerth || status === "AT BERTH")
+                : (hasArrBerth || hasArrAnchor || status === "AT BERTH" || status === "AT ANCHOR")
                   ? (depDest || activeVoy?.arr?.dest || activeVoy?.arr?.port || "—")
                   : (activeVoy?.arr?.port || activeVoy?.arr?.dest || depDest || "—");
             const destDisplay = status === "UNDERWAY" ? activeVoy?.dep?.dest : null;

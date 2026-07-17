@@ -271,20 +271,49 @@ function calcTeus(rows) {
   };
 }
 
+// Resolve port/dest from voyage departure (same rules as ship status).
+// - Departure types: Port = dep.port, Dest = dep.dest
+// - Arrival berth/anchor, shifts, shelter: Port = dep.dest (where the ship is)
+// - Noon / downtime / other: Port = dep.port (underway from), Dest = dep.dest
 function getActivePortDest(ship, voy, reports, currentType) {
   if (!ship || !voy) return { port: "", dest: "" };
-  const startTypes = ["departure","shift_anchor","dep_anchor"];
+  const depTypes = ["departure", "dep_anchor"];
   const candidates = (reports || [])
-    .filter(r => r.ship === ship && r.voy === voy && startTypes.includes(r.type) && (r.port || r.dest || r.destination));
+    .filter(r => r.ship === ship && String(r.voy) === String(voy) && depTypes.includes(r.type) && (r.port || r.dest || r.destination));
   if (!candidates.length) return { port: "", dest: "" };
-  candidates.sort((a, b) => new Date(b.ts || 0) - new Date(a.ts || 0));
+  // Prefer type "departure", then latest ts
+  candidates.sort((a, b) => {
+    if (a.type === "departure" && b.type !== "departure") return -1;
+    if (b.type === "departure" && a.type !== "departure") return 1;
+    return new Date(b.ts || 0) - new Date(a.ts || 0);
+  });
   const latest = candidates[0];
   const port = latest.port || "";
   const dest = latest.dest || latest.destination || "";
-  // For arrival/shift, the port should be the departure's destination (where they arrived to)
-  const arrivalShiftTypes = ["arr_berth","arr_anchor","shift_anchor","shift_berth"];
-  const isArrShift = arrivalShiftTypes.includes(currentType);
-  return { port: isArrShift ? "" : (port || dest), dest: isArrShift ? "" : dest };
+
+  const atDestTypes = [
+    "arr_berth", "arr_anchor", "shift_anchor", "shift_berth",
+    "shift_bb", "shift_aa", "shelter_arr", "shelter_dep",
+  ];
+  if (atDestTypes.includes(currentType)) {
+    return { port: dest || port, dest: dest || "" };
+  }
+  // departure, noon, downtime, sea_trial, etc.
+  return { port: port || dest, dest };
+}
+
+/** Port shown on log / WA / cards — same rule as status kapal */
+function getReportDisplayPort(r, allReports) {
+  if (!r) return "";
+  const pd = getActivePortDest(r.ship, r.voy, allReports || [], r.type);
+  if (pd.port) return pd.port;
+  // fallback to fields saved on the report itself
+  const atDestTypes = [
+    "arr_berth", "arr_anchor", "shift_anchor", "shift_berth",
+    "shift_bb", "shift_aa", "shelter_arr", "shelter_dep",
+  ];
+  if (atDestTypes.includes(r.type)) return r.dest || r.port || "";
+  return r.port || r.dest || "";
 }
 
 // Get active (underway) voyage for a given ship from reports list
@@ -460,14 +489,17 @@ function buildWA(r, allReports) {
       const isShift = ["shift_anchor","shift_berth"].includes(r.type);
       const isDeparture = ["departure","dep_anchor","shelter_dep","sea_trial"].includes(r.type);
       if (isArrival || isShift) {
-        const displayPort = r.dest || r.port || "-";
+        const displayPort = getReportDisplayPort(r, allReports) || r.dest || r.port || "-";
         return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
       }
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
+      // noon / downtime / etc. — same as status: Port from departure
+      const displayPort = getReportDisplayPort(r, allReports) || r.port || r.dest || "-";
       const voyPort = getVoyagePort();
-      const port = r.port || r.dest || voyPort?.port || "-";
       const dest = r.dest || voyPort?.dest || "";
-      return `Voyage: ${r.voy || "-"} | Port: ${port}${dest ? " → " + dest : ""}`;
+      // For noon show Port only (dest optional if different)
+      if (r.type === "noon") return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
+      return `Voyage: ${r.voy || "-"} | Port: ${displayPort}${dest && dest !== displayPort ? " → " + dest : ""}`;
     })(),
     `Date/Time: ${fmtDT(r.ts)}`,
     `Master: ${r.master || "-"}`,
@@ -1653,16 +1685,25 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
 
             let isPortReadonly = isPortLocked;
             let isDestReadonly = isDestLocked;
+            // Same rule as status kapal: arr/shift Port = dep.dest; else dep.port
             let displayPort = pd.port || fref.current.port || "";
-            let displayDest = pd.dest || fref.current.destination || "";
+            let displayDest = pd.dest || fref.current.destination || fref.current.dest || "";
 
             if (!isEdit) {
+              // Always seed from voyage departure when available
+              if (pd.port) {
+                displayPort = pd.port;
+                fref.current.port = pd.port;
+              }
+              if (pd.dest) {
+                displayDest = pd.dest;
+                fref.current.destination = pd.dest;
+                fref.current.dest = pd.dest;
+              }
+              // noon: keep readonly auto; other types editable but prefilled
               if (type !== "noon") {
                 isPortReadonly = false;
                 isDestReadonly = false;
-              } else {
-                if (displayPort) fref.current.port = displayPort;
-                if (displayDest) fref.current.destination = displayDest;
               }
             }
 
@@ -3581,7 +3622,7 @@ function ReportLog({ reports, onView, user }) {
                   <td style={{ ...ss.td(i%2), fontWeight:600 }}>MV {r.ship}</td>
                   <td style={{ ...ss.td(i%2), color:C.accent }}>{r.voy}</td>
                   <td style={ss.td(i%2)}>{rt?.label||r.type}</td>
-                  <td style={ss.td(i%2)}>{r.port||"-"}</td>
+                  <td style={ss.td(i%2)}>{getReportDisplayPort(r, reports)||r.port||r.dest||"-"}</td>
                   <td style={ss.td(i%2)}>{r.master||"-"}</td>
                   <td style={ss.td(i%2)}><button style={ss.btnSm(true)} onClick={()=>onView(r)}>Lihat</button></td>
                 </tr>

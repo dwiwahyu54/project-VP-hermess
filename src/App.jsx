@@ -481,11 +481,21 @@ function hasCompletedFWE(list) {
 
 function buildWA(r, allReports) {
   // Helper: try to get port/dest from voyage departure if report doesn't have it
+  // Always resolve from voyage departure (even if report already has port).
+  // Previously returned null when r.port was set → noon lost destination in WA.
   const getVoyagePort = () => {
-    if (r.port || r.dest) return null;
     if (!allReports || !r.ship || !r.voy) return null;
-    const dep = (allReports||[]).filter(x => x.ship===r.ship && x.voy===r.voy && ["departure","dep_anchor","shift_anchor"].includes(x.type))
-      .sort((a,b)=>new Date(b.ts||0)-new Date(a.ts||0))[0];
+    const dep = (allReports || [])
+      .filter(x =>
+        x.ship === r.ship &&
+        String(x.voy) === String(r.voy) &&
+        ["departure", "dep_anchor"].includes(x.type)
+      )
+      .sort((a, b) => {
+        if (a.type === "departure" && b.type !== "departure") return -1;
+        if (b.type === "departure" && a.type !== "departure") return 1;
+        return new Date(b.ts || 0) - new Date(a.ts || 0);
+      })[0];
     if (!dep) return null;
     return { port: dep.port || "", dest: dep.dest || dep.destination || "" };
   };
@@ -501,12 +511,16 @@ function buildWA(r, allReports) {
         return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
       }
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
-      // noon / downtime / etc. — same as status: Port from departure
-      const displayPort = getReportDisplayPort(r, allReports) || r.port || r.dest || "-";
+      // noon / downtime / etc. — Port & Dest from departure (same voyage)
       const voyPort = getVoyagePort();
-      const dest = r.dest || voyPort?.dest || "";
-      // For noon show Port only (dest optional if different)
-      if (r.type === "noon") return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
+      const pd = getActivePortDest(r.ship, r.voy, allReports, r.type);
+      const displayPort = pd.port || r.port || voyPort?.port || "-";
+      const dest = pd.dest || r.dest || r.destination || voyPort?.dest || "";
+      if (r.type === "noon") {
+        return dest
+          ? `Voyage: ${r.voy || "-"} | Port: ${displayPort} → ${dest}`
+          : `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
+      }
       return `Voyage: ${r.voy || "-"} | Port: ${displayPort}${dest && dest !== displayPort ? " → " + dest : ""}`;
     })(),
     `Date/Time: ${fmtDT(r.ts)}`,
@@ -1409,16 +1423,18 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
   // Auto-fill voyage no + port/dest for reports OTHER than departure/shift_anchor
   // Those two are always left free for manual entry — see fields UI below
   useEffect(() => {
+    if (isEdit) return;
     if (ship && activeVoy) {
-      const alwaysFree = false;  // ALL types get auto-fill from departure
-      if (!alwaysFree) {
-        fref.current.voy = activeVoy;
-        const pd = getActivePortDest(ship, activeVoy, allReports || [], type);
-        if (!fref.current.port && pd.port) fref.current.port = pd.port;
-        if (!fref.current.destination && pd.dest) fref.current.destination = pd.dest;
+      fref.current.voy = activeVoy;
+      const pd = getActivePortDest(ship, activeVoy, allReports || [], type);
+      // Always sync Port+Dest from departure when known (noon must not lose dest)
+      if (pd.port) fref.current.port = pd.port;
+      if (pd.dest) {
+        fref.current.destination = pd.dest;
+        fref.current.dest = pd.dest;
       }
     }
-  }, [ship, activeVoy, type, isEdit]);
+  }, [ship, activeVoy, type, isEdit, allReports]);
 
   useEffect(() => { fref.current.type = type; }, [type]);
   useEffect(() => { fref.current.ship = ship; }, [ship]);
@@ -1514,8 +1530,14 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
       type,
       ts: fref.current.ts,
       master: fref.current.master,
-      port: fref.current.port,
-      dest: fref.current.destination,
+      port: (() => {
+        const pd = getActivePortDest(ship, fref.current.voy || activeVoy, allReports || [], type);
+        return fref.current.port || pd.port || "";
+      })(),
+      dest: (() => {
+        const pd = getActivePortDest(ship, fref.current.voy || activeVoy, allReports || [], type);
+        return fref.current.destination || fref.current.dest || pd.dest || "";
+      })(),
       posisi: fref.current.posisi,
       rmk: fref.current.rmk,
       dist_go: fref.current.dist_go ? parseFloat(fref.current.dist_go) : null,

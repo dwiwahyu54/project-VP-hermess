@@ -271,10 +271,18 @@ function calcTeus(rows) {
   };
 }
 
-// Resolve port/dest from voyage departure (same rules as ship status).
-// - Departure types: Port = dep.port, Dest = dep.dest
-// - Arrival berth/anchor, shifts, shelter: Port = dep.dest (where the ship is)
-// - Noon / downtime / other: Port = dep.port (underway from), Dest = dep.dest
+// =============================================================================
+// PORT DISPLAY (form / WA / Report Log / status) — samakan di semua tempat
+// =============================================================================
+// Sumber kebenaran: report Departure (atau dep_anchor) voyage yang sama.
+//   dep.port  = pelabuhan asal
+//   dep.dest  = tujuan
+//
+// Aturan tampilan Port:
+//   - departure / noon / downtime / …  → Port = dep.port
+//   - arr_berth, arr_anchor, shift_*, shelter_* → Port = dep.dest
+//     (kapal sudah / sedang di tujuan = destination departure)
+// Destination field form tetap bisa diisi terpisah; prefill dari dep.dest.
 function getActivePortDest(ship, voy, reports, currentType) {
   if (!ship || !voy) return { port: "", dest: "" };
   const depTypes = ["departure", "dep_anchor"];
@@ -1972,6 +1980,29 @@ function getEventVal(report, key) {
 // Helper: Get ship current status for dashboard (where is the ship RIGHT NOW)
 // status: UNDERWAY | AT ANCHOR | AT BERTH | IN PORT
 // phaseSinceH: hours in current phase only
+// =============================================================================
+// STATUS KAPAL (Dashboard) — OPERASIONAL LIVE, bukan KPI management
+// =============================================================================
+// Badge: UNDERWAY | AT ANCHOR | AT BERTH | IN PORT
+//
+// UNDERWAY: ada BOSV departure, belum EOSV arrival → sailingH sejak BOSV
+//
+// IN PORT (voyage terakhir yang sudah ada arrival/eosv):
+//   Timeline fase dari SEMUA report:
+//     arr_anchor / shift_anchor / shelter_arr  → segmen ANCHOR
+//     arr_berth  / shift_berth                 → segmen BERTH
+//   Anch (jam)  = jumlah SEMUA segmen anchor (bisa >1 kali re-anchor)
+//   Berth (jam) = jumlah SEMUA segmen berth   (bisa >1 kali shift berth)
+//   In Port     = Anch + Berth
+//   Badge       = jenis fase TERAKHIR (by waktu event, bukan ts simpan)
+//
+// Port di kartu status:
+//   UNDERWAY     → port departure
+//   AT ANCHOR/BERTH (ada arr_anchor/arr_berth) → destination departure
+//
+// PENTING: angka Anch/Berth di sini BISA BEDA dengan kartu Management Report
+// (KPI potong downtime, anchorage hanya arr_anchor→first FWE, berthing
+//  first FWE→BOSV next). Dashboard = "sekarang di mana + berapa lama fase".
 function getShipCurrentStatus(ship, voys) {
   const shipVoys = voys.filter(v => v.ship === ship);
   shipVoys.sort((a, b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0));
@@ -2058,6 +2089,8 @@ function getShipCurrentStatus(ship, voys) {
 
 // --- DASHBOARD ----------------------------------------------------------------
 // --- Dashboard Average Speed chart (prev month vs selected month) ---
+// Parameter target average speed (knots) per kapal — garis putus di chart Dashboard.
+// Bukan hasil hitung; nilai acuan performance (update sesuai fleet policy).
 const SPEED_PARAM_BY_SHIP = {
   "Sahabat Mas": 9.2,
   "Semangat Mas": 9.0,
@@ -2868,8 +2901,21 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     });
   });
 
-  // Per-ship At Port (hari) = Berthing (hari) - (RH_ME / 24) - [ DaysInMonth - TotalDowntime (hari) - Berthing (hari) - Anchorage (hari) ]
-  // Returns null if RH_ME is not filled (same behavior as Management Report)
+  // =============================================================================
+  // AT PORT (hari) — Vessel Report / Management (butuh Running Hours ME)
+  // =============================================================================
+  // At Port = Berthing(hari) − (RH_ME / 24)
+  //           − [ DaysInMonth − Downtime − Berthing − Anchorage ]
+  //         = 2×Berthing + Downtime + Anchorage − DaysInMonth − RH_ME/24
+  // (bentuk di kode: berthingD - rhMe/24 - (daysInMonth - dt - berthing - anch))
+  //
+  // Bukan "waktu sandar kasar"; ini alokasi hari port setelah koreksi RH ME.
+  // RH ME kosong → At Port = null (tampil kosong), Sailing juga tidak dihitung.
+  //
+  // SAILING (hari) = DaysInMonth − AtPort − Anchorage − Downtime
+  // (hanya jika At Port tidak null)
+  //
+  // Berthing/Anchorage di sini = rumus KPI (getBerthing/getAnchorage + −DT).
   const AtPortDaysByShip = {};
   SHIPS.forEach(ship => {
     const berthingH = BerthingHoursByShip[ship] || 0;
@@ -3678,7 +3724,12 @@ function Modal({ report, onClose, onEdit, onDelete, allReports }) {
   );
 }
 
-// Overlap of two time ranges in hours (0 if no overlap)
+// =============================================================================
+// RUMUS WAKTU — helper overlap (dipakai Anchorage / Berthing − Downtime)
+// =============================================================================
+// intervalOverlapHours: berapa jam dua rentang waktu saling tumpang-tindih.
+// Contoh: berthing [10:00–18:00] & downtime [12:00–14:00] → overlap 2 jam.
+// Dipakai agar downtime yang "nempel" di interval anch/berth bisa dipotong.
 function intervalOverlapHours(t0, t1, u0, u1) {
   const a = new Date(t0).getTime();
   const b = new Date(t1).getTime();
@@ -3690,10 +3741,15 @@ function intervalOverlapHours(t0, t1, u0, u1) {
   return e > s ? (e - s) / 3600000 : 0;
 }
 
-// Downtime hours for a ship that fall inside [rangeStart, rangeEnd].
-// If downtime crosses anchorage→berthing at FWE, overlap with each window
-// automatically splits it: anchorage gets start→FWE, berthing gets FWE→end.
-// Only type "downtime" (shelter not deducted from anch/berth).
+// downtimeHoursInRange: total jam downtime kapal di dalam [rangeStart, rangeEnd].
+// HANYA report type "downtime" (shelter TIDAK dipotong dari anch/berth).
+//
+// Downtime LINTAS FWE (cross anchorage → berthing) otomatis terbagi:
+//   - Window anchorage berakhir di FWE shift_berth → porsi downtime s/d FWE
+//     masuk potongan ANCHORAGE
+//   - Window berthing mulai di FWE → porsi downtime setelah FWE masuk potongan
+//     BERTHING
+// Tidak perlu logic "bagi dua" manual; cukup hitung overlap per window.
 function downtimeHoursInRange(reports, ship, rangeStart, rangeEnd) {
   let h = 0;
   (reports || []).forEach((r) => {
@@ -3705,9 +3761,13 @@ function downtimeHoursInRange(reports, ship, rangeStart, rangeEnd) {
 
 // --- MANAGEMENT REPORT ==========================================================
 // Anchorage time: arr_anchor SBE/EOSV -> shift_berth FWE − downtime in interval
-// Earliest shift_berth report in a voyage list (by FWE / ts).
-// Multi-shift sequence: arr_anchor → shift_berth → shift_anchor → shift_berth
-// still ONE voyage (same voy no); anchorage ends / berthing starts at FIRST FWE.
+// =============================================================================
+// MULTI-SHIFT DALAM 1 VOYAGE
+// =============================================================================
+// getFirstShiftBerth: ambil shift_berth TERAWAL (urut FWE/ts).
+// Urutan umum: arr_anchor → shift_berth#1 → shift_anchor → shift_berth#2 → …
+// Selama nomor voyage SAMA & belum Compl Load di voyage berikutnya = 1 voyage.
+// Cut-off anchorage / awal berthing = FWE shift_berth PERTAMA (bukan yang kedua).
 function getFirstShiftBerth(list) {
   const items = (list || []).filter((r) => r.type === "shift_berth");
   if (!items.length) return null;
@@ -3719,9 +3779,13 @@ function getFirstShiftBerth(list) {
   return items[0];
 }
 
-// First time vessel is at berth this voyage (earliest FWE among arr_berth / first shift_berth).
-// Direct berthing: arr_berth FWE. After re-anchor shift_anchor does NOT reset — still berthing window from first FWE.
-// Anchorage path: arr_anchor → first shift_berth FWE.
+// getBerthingStartReport: kapan pertama kali kapal di BERTH pada voyage ini.
+// Ambil FWE paling awal di antara: arr_berth  ATAU  first shift_berth.
+//   - Direct berthing: pakai FWE arr_berth
+//   - Via anchorage:   pakai FWE shift_berth pertama
+// Setelah itu shift_anchor (re-anchor) TIDAK mereset "awal berthing" untuk
+// cut-off KPI di getBerthingTimeEntries (awal tetap FWE pertama).
+// (Status dashboard boleh beda — lihat getShipCurrentStatus.)
 function getBerthingStartReport(list) {
   const candidates = [];
   const arrBerth = (list || []).find((r) => r.type === "arr_berth");
@@ -3738,9 +3802,24 @@ function getBerthingStartReport(list) {
 }
 
 
+// =============================================================================
+// ANCHORAGE TIME (Management Report + Vessel Report)
+// =============================================================================
+// DEFINISI KPI:
+//   Anchorage Time = SBE/EOSV (Arrival Anchorage)
+//                    → FWE (Shifting to Berth PERTAMA)
+//                    − downtime yang jatuh di interval itu
+//
+// TIDAK dihitung sebagai anchorage KPI:
+//   - Direct arrival berthing (tanpa arr_anchor)
+//   - Shifting to anchorage SETELAH pernah berth (re-anchor) → itu status
+//     operasional, bukan "arrival anchorage" di rumus management
+//
+// Jika belum ada shift_berth: t1 = sekarang (masih di anchorage, open-ended)
+// Split per bulan: splitByMonth(t0,t1) lalu potong downtime per segmen bulan.
 function getAnchorageTimeEntries(reports) {
   // ONLY arrival anchorage → first shift_berth FWE.
-  // Direct arr_berth / later shift_anchor = NOT anchorage time (stays berthing).
+  // Direct arr_berth / later shift_anchor = NOT anchorage time (KPI).
   const voys = computeVoyages(reports);
   const entries = [];
   voys.forEach(v => {
@@ -3760,7 +3839,21 @@ function getAnchorageTimeEntries(reports) {
   return entries;
 }
 
-// Berthing time: shift_berth/arr_berth FWE -> BOSV next voyage − downtime in interval
+// =============================================================================
+// BERTHING TIME (Management Report + Vessel Report)
+// =============================================================================
+// DEFINISI KPI:
+//   Berthing Time = FWE (shift_berth PERTAMA  atau  arr_berth, yang lebih awal)
+//                   → BOSV (Departure voyage BERIKUTNYA, kapal yang sama)
+//                   − downtime yang jatuh di interval itu
+//
+// Catatan:
+//   - Multi shift berth dalam 1 voyage: AWAL = FWE pertama (getBerthingStartReport)
+//   - Belum ada next voyage / belum BOSV: t1 = sekarang (masih di berth)
+//   - Downtime lintas FWE: porsi setelah FWE dipotong dari berthing
+//     (porsi sebelum FWE sudah dipotong di anchorage)
+//   - Ini BEDA dengan "Anch/Berth jam" di kartu Status Kapal (dashboard),
+//     yang menjumlah SEMUA segmen fase live termasuk re-anchor.
 function getBerthingTimeEntries(reports) {
   const voys = computeVoyages(reports);
   const entries = [];
@@ -4536,6 +4629,10 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     downloadDowntimeCSV(matchedEntries, filenameParts.join("_") + ".csv");
   };
 
+  // --- Anchorage Time (KPI Management Report) ---
+  // Entri dari getAnchorageTimeEntries; filter Kapal/Tahun/Bulan di UI.
+  // Per segmen bulan: netH = jam_segmen − downtime overlap di segmen itu.
+  // Kartu menampilkan total net (hari = jam/24). Rincian: ship, voy, t0, t1, hours.
   // --- Anchorage Time: SBE/EOSV arr_anchor → FWE shift_berth − downtime (split at FWE if crosses) ---
   const anchorageEntries = getAnchorageTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
   let totalAnchorageH = 0;
@@ -4560,6 +4657,10 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     });
   });
 
+  // --- Berthing Time (KPI Management Report) ---
+  // Entri dari getBerthingTimeEntries; sama filter Kapal/Tahun/Bulan.
+  // netH per segmen bulan = jam_segmen − downtime overlap (setelah FWE).
+  // Ini yang tampil di kartu "Berthing Time" + tabel rincian + CSV.
   // --- Berthing Time: FWE shift_berth/arr_berth → BOSV next − downtime (split at FWE if crosses) ---
   const berthingEntries = getBerthingTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
   let totalBerthingH = 0;
@@ -4585,6 +4686,30 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     });
   });
 
+  // =============================================================================
+  // TOTAL DISTANCE (Management Report — kartu + rincian)
+  // =============================================================================
+  // Sumber: ttl_dist di Arrival (arr_berth / arr_anchor).
+  //
+  // A) Departure & Arrival BULAN SAMA:
+  //      → full ttl_dist ke bulan itu
+  //      → label rincian: Arrival Berthing / Arrival Anchorage
+  //
+  // B) Voyage LINTAS BULAN (dep month ≠ arr month):
+  //      Noon "crossing" = noon di hari terakhir bulan dep, else noon TERAKHIR
+  //      di bulan departure (getNoonOnLastDayOfMonth).
+  //      estCrossDist = drun + (spd × 12)
+  //      • Bulan DEPARTURE: + estCrossDist
+  //        label: Noon Report (drun+(spd*12))
+  //      • Bulan ARRIVAL:   + max(0, ttl_dist − estCrossDist)
+  //        label: Arrival … (ttl_dist - (drun+(spd*12)))
+  //
+  // C) Masih UNDERWAY (belum arrival) + filter thn/bln terisi:
+  //      + estDist = drun + (spd×12) dari noon di bulan filter
+  //      label rincian: Noon Report (drun+(spd*12))
+  //
+  // BEDA dengan Vessel Report "Laut (NM)" / Total Miles Performance =
+  // sum ttl_dist arrival di bulan filter saja (tanpa split lintas bulan).
   // --- Total Distance ---
   // For each Arrival report (arr_berth/arr_anchor):
   //   - Find the voyage's DEPARTURE month.

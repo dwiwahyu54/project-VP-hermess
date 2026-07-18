@@ -1661,32 +1661,33 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             )}
           </div>
           {(() => {
-            // Lock voyage number UNTIL current voyage is Completed (next voyage has Compl Load).
-            // Sebelum Compl Load → semua tipe laporan = auto-fill dari activeVoy, read-only.
-            // Setelah Compl Load → activeVoy otomatis naik ke voyage berikutnya.
-            // Crew TIDAK bisa edit nomor voyage manual.
-            const depExists = ship ? voyageHasDeparture(ship, activeVoy, allReports||[]) : false;
-            const isPreDep = ["dep_anchor","downtime"].includes(type);
+            // "departure" and "shift_anchor" are ALWAYS freely editable, regardless
+            // of whether a voyage is currently active. This lets the user start a
+            // new voyage number immediately even if the previous voyage hasn't been
+            // marked Completed yet (Completed now requires "Compl Load" in either
+            // a departure or shift_anchor report — see hasCompletedFWE()).
+            const isAlwaysEditableType = ["departure","shift_anchor"].includes(type);
 
-            let isReadonly = true;
-            let displayVoy = activeVoy || fref.current.voy || "";
-            let autoLabel = activeVoy ? "★ Auto" : "";
+            const isPreDepType  = ["dep_anchor","downtime"].includes(type);
+            const depExists     = ship ? voyageHasDeparture(ship, activeVoy, allReports||[]) : false;
+
+            let isReadonly = false;
+            let displayVoy = fref.current.voy || "";
+            let autoLabel  = "";
 
             if (!isEdit) {
-              if (isPreDep && !depExists) {
-                // pre-dep types without departure yet: crew can type voyage free
+              if (isAlwaysEditableType) {
                 isReadonly = false;
-                displayVoy = fref.current.voy || "";
-                autoLabel = "";
-              } else if (isPreDep && depExists) {
-                displayVoy = activeVoy;
-                autoLabel = "★ Auto dari Departure";
+              } else if (isPreDepType && depExists) {
+                isReadonly = true; displayVoy = activeVoy; autoLabel = "★ Auto dari Departure";
+              } else if (isPreDepType && !depExists) {
+                isReadonly = false; displayVoy = fref.current.voy || "";
               } else {
-                // departure, shift_anchor, noon, arrival, shift, shelter — ALL locked
-                displayVoy = activeVoy || fref.current.voy || "";
-                autoLabel = activeVoy ? "★ Auto" : "";
+                // noon, arrival, shelter, etc — always auto from activeVoy
+                isReadonly = true; displayVoy = activeVoy || ""; autoLabel = activeVoy ? "★ Auto" : "";
               }
-              if (displayVoy) fref.current.voy = displayVoy;
+              // sync to ref
+              if (isReadonly && displayVoy) fref.current.voy = displayVoy;
             }
 
             return (

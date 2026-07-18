@@ -2059,9 +2059,9 @@ function getShipCurrentStatus(ship, voys) {
 // --- DASHBOARD ----------------------------------------------------------------
 // --- Dashboard Average Speed chart (prev month vs selected month) ---
 const SPEED_PARAM_BY_SHIP = {
-  "Sahabat Mas": 9.0,
+  "Sahabat Mas": 9.2,
   "Semangat Mas": 9.0,
-  "Express Mas": 9.0,
+  "Express Mas": 9.2,
   "Pratama Mas": 9.2,
   "Prakarsa Mas": 9.2,
   "Mavendra Mas": 8.7,

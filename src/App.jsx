@@ -1668,7 +1668,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             // a departure or shift_anchor report — see hasCompletedFWE()).
             const isAlwaysEditableType = ["departure","shift_anchor"].includes(type);
 
-            const isPreDepType  = ["dep_anchor","downtime"].includes(type);
+            const isPreDepType  = ["downtime"].includes(type);
             const depExists     = ship ? voyageHasDeparture(ship, activeVoy, allReports||[]) : false;
 
             let isReadonly = false;

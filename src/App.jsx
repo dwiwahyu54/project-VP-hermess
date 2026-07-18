@@ -2064,7 +2064,7 @@ const SPEED_PARAM_BY_SHIP = {
   "Express Mas": 9.0,
   "Pratama Mas": 9.2,
   "Prakarsa Mas": 9.2,
-  "Mavendra Mas": 8.5,
+  "Mavendra Mas": 8.7,
   "Selaras Mas": 8.5,
   "Segoro Mas": 9.2,
 };

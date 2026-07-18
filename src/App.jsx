@@ -3840,26 +3840,30 @@ function getBerthingStartReport(list) {
 // Jika belum ada shift_berth: t1 = sekarang (masih di anchorage, open-ended)
 // Split per bulan: splitByMonth(t0,t1) lalu potong downtime per segmen bulan.
 function getAnchorageTimeEntries(reports) {
-  // ONLY arrival anchorage → first shift_berth FWE.
-  // Direct arr_berth / later shift_anchor = NOT anchorage time (KPI).
+  // Cross-year fix: gabung semua list voyage berdasarkan ship+voy (abaikan tahun)
+  // agar shift_berth di tahun berikutnya tetap ketemu (year boundary bug).
   const voys = computeVoyages(reports);
-  const entries = [];
+  const byShipVoy = {};
   voys.forEach(v => {
-    const arrAnc = (v.list||[]).find(r => r.type === "arr_anchor");
-    if (!arrAnc) return; // no arr_anchor → no anchorage time
+    const key = v.ship + "||" + v.no;
+    if (!byShipVoy[key]) byShipVoy[key] = [];
+    byShipVoy[key] = byShipVoy[key].concat(v.list || []);
+  });
+  const entries = [];
+  Object.entries(byShipVoy).forEach(([key, list]) => {
+    const arrAnc = (list || []).find(r => r.type === "arr_anchor");
+    if (!arrAnc) return;
     const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
     if (!t0) return;
-
-    // FIRST shift_berth only (later shift_berth after re-anchor still same voyage)
-    const shiftBerth = getFirstShiftBerth(v.list);
-    // If first shift_berth FWE exists, anchorage has ended at that point.
-    // Otherwise still at anchorage — open end = now for month split.
+    // FIRST shift_berth across ALL year groups
+    const shiftBerth = getFirstShiftBerth(list);
     const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
-
-    entries.push({ ship: v.ship, voy: v.no, t0, t1 });
+    const [ship, voy] = key.split("||");
+    entries.push({ ship, voy: Number(voy), t0, t1 });
   });
   return entries;
 }
+
 
 // =============================================================================
 // BERTHING TIME (Management Report + Vessel Report)
@@ -3877,23 +3881,36 @@ function getAnchorageTimeEntries(reports) {
 //   - Ini BEDA dengan "Anch/Berth jam" di kartu Status Kapal (dashboard),
 //     yang menjumlah SEMUA segmen fase live termasuk re-anchor.
 function getBerthingTimeEntries(reports) {
+  // Cross-year fix: gabung voyage per ship+voy agar penentuan nextVoy BOSV
+  // tidak terbelah batas tahun (voy Dec → Jan).
   const voys = computeVoyages(reports);
-  const entries = [];
+  // Grup voyage by ship (untuk urutan si, ignore year boundary)
+  const byShipVoy = {};
+  voys.forEach(v => {
+    const key = v.ship + "||" + v.no;
+    if (!byShipVoy[key]) byShipVoy[key] = [];
+    byShipVoy[key].push(v);
+  });
+  // Voyages per ship, sorted by dep.ts
   const byShip = {};
-  voys.forEach(v => { if (!byShip[v.ship]) byShip[v.ship]=[]; byShip[v.ship].push(v); });
+  Object.values(byShipVoy).flat().forEach(v => {
+    if (!byShip[v.ship]) byShip[v.ship] = [];
+    byShip[v.ship].push(v);
+  });
+  const entries = [];
   Object.values(byShip).forEach(shipVoys => {
     shipVoys.sort((a,b)=>new Date(a.dep?.ts||a.list[0]?.ts||0)-new Date(b.dep?.ts||b.list[0]?.ts||0));
     shipVoys.forEach((v, idx) => {
-      const berthReport = getBerthingStartReport(v.list);
+      // Gabungkan list semua grup tahun untuk voyage ini
+      const mergedKey = v.ship + "||" + v.no;
+      const allListsForKey = byShipVoy[mergedKey] || [v];
+      const mergedList = allListsForKey.reduce((acc, g) => acc.concat(g.list || []), []);
+      const berthReport = getBerthingStartReport(mergedList);
       if (!berthReport) return;
       const t0 = berthReport[evKey("FWE")] || berthReport.ts;
       if (!t0) return;
 
       const nextV = shipVoys[idx+1];
-      // If the next voyage's BOSV exists, berthing ended there.
-      // Otherwise the vessel is STILL at berth (next voyage hasn't departed
-      // yet, or doesn't exist) — use "now" as the open end so ongoing
-      // berthing time still counts correctly when split by month.
       const t1 = nextV?.bosv || new Date().toISOString();
 
       entries.push({ ship: v.ship, voy: v.no, t0, t1 });
@@ -3901,6 +3918,7 @@ function getBerthingTimeEntries(reports) {
   });
   return entries;
 }
+
 
 // Total distance: sum of ttl_dist from arr_berth + arr_anchor reports
 function getTotalDistanceEntries(reports) {

@@ -328,21 +328,36 @@ function getReportDisplayPort(r, allReports) {
 // Also returns pre-departure voy if only shifting/downtime exist (no departure yet)
 function getActiveVoyage(ship, reports) {
   if (!ship) return null;
-  // Use computeVoyages so the "Completed" determination (based on Compl Load
-  // in the NEXT voyage) is consistent everywhere in the app.
+  // Completed based on Compl Load in NEXT voyage (departure ATAU shift_anchor).
   const shipVoys = computeVoyages(reports).filter(v => v.ship === ship);
-  shipVoys.sort((a,b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0));
+  shipVoys.sort((a, b) => {
+    const ta = new Date(a.dep?.ts || a.list[0]?.ts || 0).getTime();
+    const tb = new Date(b.dep?.ts || b.list[0]?.ts || 0).getTime();
+    if (ta !== tb) return ta - tb;
+    return Number(a.no) - Number(b.no);
+  });
 
-  // Priority 1: voyage with departure that is still Underway
+  // Priority 1: Underway (punya departure, belum ditutup Compl Load voy berikutnya)
   const underway = shipVoys.find(v => v.status === "Underway");
   if (underway) return underway.no;
 
-  // Priority 2: voyage with only shifting/downtime (pre-departure loading),
-  // i.e. no departure report yet but a shift_anchor/downtime report exists
+  // Priority 2: voyage baru lewat shift_anchor (bisa + Compl Load), tanpa departure
+  // → activeVoy baru setelah voyage lama Completed. Ambil nomor terbaru.
+  const preDeps = shipVoys.filter(v => {
+    const hasDep = v.list.some(r => ["departure", "dep_anchor"].includes(r.type));
+    const hasShiftAnc = v.list.some(r => r.type === "shift_anchor");
+    return !hasDep && hasShiftAnc;
+  });
+  if (preDeps.length) {
+    preDeps.sort((a, b) => Number(b.no) - Number(a.no));
+    return preDeps[0].no;
+  }
+
+  // Priority 3: downtime-only pre-dep
   for (const v of shipVoys) {
-    const hasDep = v.list.some(r => ["departure","dep_anchor"].includes(r.type));
-    const hasPreDep = v.list.some(r => ["shift_anchor","downtime"].includes(r.type));
-    if (!hasDep && hasPreDep) return v.no;
+    const hasDep = v.list.some(r => ["departure", "dep_anchor"].includes(r.type));
+    const hasDt = v.list.some(r => r.type === "downtime");
+    if (!hasDep && hasDt) return v.no;
   }
   return null;
 }
@@ -455,24 +470,29 @@ function computeVoyages(reports) {
   const byShip = {};
   voysWithoutStatus.forEach(v => { if (!byShip[v.ship]) byShip[v.ship]=[]; byShip[v.ship].push(v); });
   Object.values(byShip).forEach(shipVoys => {
-    shipVoys.sort((a,b) => new Date(a.dep?.ts || a.list[0]?.ts || 0) - new Date(b.dep?.ts || b.list[0]?.ts || 0));
+    shipVoys.sort((a, b) => {
+      const ta = new Date(a.dep?.ts || a.list[0]?.ts || 0).getTime();
+      const tb = new Date(b.dep?.ts || b.list[0]?.ts || 0).getTime();
+      if (ta !== tb) return ta - tb;
+      return Number(a.no) - Number(b.no);
+    });
   });
 
   return voysWithoutStatus.map(v => {
+    // Tanpa departure = Idle/pre-dep; Compl Load di shift_anchor tetap bisa tutup voyage SEBELUMNYA.
     if (!v.dep) return { ...v, status: "Idle" };
     const shipVoys = byShip[v.ship];
-    const myIdx = shipVoys.findIndex(x => x.no === v.no && x.year === v.year); // berdasarkan tahun juga
-    const nextV = shipVoys[myIdx + 1];
+    const myIdx = shipVoys.findIndex(x => x.no === v.no && x.year === v.year);
+    const nextV = myIdx >= 0 ? shipVoys[myIdx + 1] : null;
+    // Completed jika voyage BERIKUTNYA punya Compl Load di departure ATAU shift_anchor
     const nextHasComplLoad = nextV ? hasCompletedFWE(nextV.list) : false;
     return { ...v, status: nextHasComplLoad ? "Completed" : "Underway" };
   });
 }
 
-// Returns true if the given report list contains a Compl Load event in
-// either a departure or shift_anchor report. Used to determine whether the
-// PREVIOUS voyage (of the same ship) should be marked Completed — see
-// computeVoyages(), where this is checked against the NEXT voyage's list,
-// not the voyage's own list.
+// Compl Load di departure ATAU shift_anchor pada voyage N+1
+// menutup voyage N; voyage N+1 (nomor di laporan itu) jadi active.
+// shift_anchor: voy BEBAS; jika isi Compl Load + voy baru → voyage lama berakhir.
 function hasCompletedFWE(list) {
   return (list || []).some(r =>
     (r.type === "departure" || r.type === "shift_anchor") && r[evKey("Compl Load")]

@@ -1440,18 +1440,29 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
   const activeVoy = ship ? getActiveVoyage(ship, allReports || []) : null;
   const shipIsUnderway = !!activeVoy;
 
-  // Auto-fill voyage no + port/dest for reports OTHER than departure/shift_anchor
-  // Those two are always left free for manual entry — see fields UI below
+  // Auto-fill voyage no. Port/Dest: default dari departure HANYA jika masih kosong
+  // (crew boleh edit; jangan timpa nilai yang sudah diisi user).
   useEffect(() => {
     if (isEdit) return;
     if (ship && activeVoy) {
-      fref.current.voy = activeVoy;
+      // voyage auto hanya untuk tipe locked (departure/shift_anchor bebas di UI)
+      if (!["departure", "shift_anchor"].includes(type)) {
+        fref.current.voy = activeVoy;
+      }
       const pd = getActivePortDest(ship, activeVoy, allReports || [], type);
-      // Always sync Port+Dest from departure when known (noon must not lose dest)
-      if (pd.port) fref.current.port = pd.port;
-      if (pd.dest) {
+      // Seed default sekali; jangan overwrite edit user
+      if (!fref.current.port && pd.port) fref.current.port = pd.port;
+      if (!(fref.current.destination || fref.current.dest) && pd.dest) {
         fref.current.destination = pd.dest;
         fref.current.dest = pd.dest;
+      }
+      // noon: lock tetap pakai departure (readonly di UI)
+      if (type === "noon") {
+        if (pd.port) fref.current.port = pd.port;
+        if (pd.dest) {
+          fref.current.destination = pd.dest;
+          fref.current.dest = pd.dest;
+        }
       }
     }
   }, [ship, activeVoy, type, isEdit, allReports]);
@@ -1550,14 +1561,9 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
       type,
       ts: fref.current.ts,
       master: fref.current.master,
-      port: (() => {
-        const pd = getActivePortDest(ship, fref.current.voy || activeVoy, allReports || [], type);
-        return fref.current.port || pd.port || "";
-      })(),
-      dest: (() => {
-        const pd = getActivePortDest(ship, fref.current.voy || activeVoy, allReports || [], type);
-        return fref.current.destination || fref.current.dest || pd.dest || "";
-      })(),
+      // Port/Dest: simpan yang diisi crew; fallback default departure hanya jika kosong
+      port: (fref.current.port || "").trim() || (getActivePortDest(ship, fref.current.voy || activeVoy, allReports || [], type).port || ""),
+      dest: (fref.current.destination || fref.current.dest || "").trim() || (getActivePortDest(ship, fref.current.voy || activeVoy, allReports || [], type).dest || ""),
       posisi: fref.current.posisi,
       rmk: fref.current.rmk,
       dist_go: fref.current.dist_go ? parseFloat(fref.current.dist_go) : null,
@@ -1740,21 +1746,27 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             let displayDest = pd.dest || fref.current.destination || fref.current.dest || "";
 
             if (!isEdit) {
-              // Always seed from voyage departure when available
-              if (pd.port) {
-                displayPort = pd.port;
+              // Default dari departure hanya jika field masih kosong — boleh diedit
+              if (!fref.current.port && pd.port) {
                 fref.current.port = pd.port;
               }
-              if (pd.dest) {
-                displayDest = pd.dest;
+              if (!(fref.current.destination || fref.current.dest) && pd.dest) {
                 fref.current.destination = pd.dest;
                 fref.current.dest = pd.dest;
               }
-              // noon: keep readonly auto; other types editable but prefilled
-              if (type !== "noon") {
+              // noon: selalu pakai departure (readonly)
+              if (type === "noon") {
+                if (pd.port) fref.current.port = pd.port;
+                if (pd.dest) {
+                  fref.current.destination = pd.dest;
+                  fref.current.dest = pd.dest;
+                }
+              } else {
                 isPortReadonly = false;
                 isDestReadonly = false;
               }
+              displayPort = fref.current.port || pd.port || "";
+              displayDest = fref.current.destination || fref.current.dest || pd.dest || "";
             }
 
             return (
@@ -1776,7 +1788,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
                       {displayDest || "—"}
                     </div>
                   ) : (
-                    <input style={ss.inp} placeholder="Surabaya" defaultValue={displayDest} key={"dest-" + ship + "-" + type} onChange={e => { fref.current.destination = e.target.value; }} />
+                    <input style={ss.inp} placeholder="Surabaya" defaultValue={displayDest} key={"dest-" + ship + "-" + type} onChange={e => { fref.current.destination = e.target.value; fref.current.dest = e.target.value; }} />
                   )}
                 </div>
               </>

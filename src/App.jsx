@@ -2150,7 +2150,7 @@ function getShipCurrentStatus(ship, voys) {
 const SPEED_PARAM_BY_SHIP = {
   "Sahabat Mas": 9.2,
   "Semangat Mas": 9.0,
-  "Express Mas": 9.2,
+  "Express Mas": 9.0,
   "Pratama Mas": 9.2,
   "Prakarsa Mas": 9.2,
   "Mavendra Mas": 8.7,

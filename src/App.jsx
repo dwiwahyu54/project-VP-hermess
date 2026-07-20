@@ -527,10 +527,10 @@ function buildWA(r, allReports) {
       const isShift = ["shift_anchor","shift_berth"].includes(r.type);
       const isDeparture = ["departure","dep_anchor","shelter_dep","sea_trial"].includes(r.type);
       if (isArrival || isShift) {
-        // Port = destination departure (or saved report port). Show Dest too if saved.
-        const displayPort = getReportDisplayPort(r, allReports) || r.port || "-";
-        const dest = r.dest || r.destination || "";
-        return `Voyage: ${r.voy || "-"} | Port: ${displayPort}${dest && dest !== displayPort ? " → " + dest : ""}`;
+        // Port = dest dari report jika ada (bisa detail seperti "Surabaya (TTL)")
+        const savedDest = r.dest || r.destination || "";
+        const displayPort = savedDest || getReportDisplayPort(r, allReports) || r.port || "-";
+        return `Voyage: ${r.voy || "-"} | Port: ${displayPort}`;
       }
       if (isDeparture) return `Voyage: ${r.voy || "-"} | From: ${r.port || "-"} ${r.dest ? "→ " + r.dest : ""}`;
       // noon / downtime / etc. — Port & Dest from departure (same voyage)

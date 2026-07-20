@@ -1742,8 +1742,8 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             let isPortReadonly = isPortLocked;
             let isDestReadonly = isDestLocked;
             // Same rule as status kapal: arr/shift Port = dep.dest; else dep.port
-            let displayPort = pd.port || fref.current.port || "";
-            let displayDest = pd.dest || fref.current.destination || fref.current.dest || "";
+            let displayPort = fref.current.port || pd.port || "";
+            let displayDest = fref.current.destination || fref.current.dest || pd.dest || "";
 
             if (!isEdit) {
               // Default dari departure hanya jika field masih kosong — boleh diedit

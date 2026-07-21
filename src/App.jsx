@@ -3955,22 +3955,26 @@ function getTotalDistanceEntries(reports) {
 }
 
 // Get total distance for a ship+month using the same cross-month split as Management Report detail
+function getNoonForEstimate(reports, ship, voy, year, month) {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const candidates = (reports || []).filter(r =>
+    r.type === "noon" &&
+    r.ship === ship &&
+    String(r.voy) === String(voy) &&
+    new Date(r.ts).getFullYear() === year &&
+    new Date(r.ts).getMonth() === month
+  );
+  if (candidates.length === 0) return null;
+  const onLastDay = candidates.filter(r => new Date(r.ts).getDate() === lastDay);
+  const pool = onLastDay.length > 0 ? onLastDay : candidates;
+  pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  return pool[0];
+}
+
 function getShipDistForMonth(reports, ship, year, month) {
   const distEnt = getTotalDistanceEntries(reports).filter(e => e.ship === ship);
   const voys = computeVoyages(reports);
   let total = 0;
-
-  // Helper: last noon in departure month (same logic as detail section getNoonOnLastDayOfMonth)
-  const crossNoon = (s, v, depY, depM) => {
-    const lastDay = new Date(depY, depM + 1, 0).getDate();
-    const inM = reports.filter(r =>
-      r.type === "noon" && r.ship === s && (r.voy == v || String(r.voy) === String(v)) &&
-      new Date(r.ts).getFullYear() === depY && new Date(r.ts).getMonth() === depM
-    );
-    if (inM.length === 0) return null;
-    const onLast = inM.filter(r => new Date(r.ts).getDate() === lastDay);
-    return (onLast.length > 0 ? onLast : inM).sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
-  };
 
   const estFromNoon = (noon) => {
     if (!noon) return 0;
@@ -3980,7 +3984,7 @@ function getShipDistForMonth(reports, ship, year, month) {
   };
 
   distEnt.forEach(e => {
-    const voyObj = voys.find(v => v.ship === e.ship && (v.no == e.voy || String(v.no) === String(e.voy)));
+    const voyObj = voys.find(v => v.ship === e.ship && String(v.no) === String(e.voy));
     const depTs = voyObj?.dep?.ts;
     if (!depTs) { total += e.dist; return; }
     const arrD = new Date(e.ts);
@@ -3991,17 +3995,16 @@ function getShipDistForMonth(reports, ship, year, month) {
     if (depY === arrY && depM === arrM) {
       if (arrY === year && arrM === month) total += e.dist;
     } else {
-      const noon = crossNoon(e.ship, e.voy, depY, depM);
+      const noon = getNoonForEstimate(reports, e.ship, e.voy, depY, depM);
       const est = estFromNoon(noon);
       if (depY === year && depM === month && est > 0) total += est;
       if (arrY === year && arrM === month) total += Math.max(0, e.dist - est);
     }
   });
 
-  // Underway estimate
   voys.filter(v => v.ship === ship).forEach(v => {
-    if (distEnt.some(e => e.ship === v.ship && (e.voy == v.no || String(e.voy) === String(v.no)))) return;
-    const noon = crossNoon(v.ship, v.no, year, month);
+    if (distEnt.some(e => e.ship === v.ship && String(e.voy) === String(v.no))) return;
+    const noon = getNoonForEstimate(reports, v.ship, v.no, year, month);
     if (noon) {
       const est = estFromNoon(noon);
       if (est > 0) total += est;
@@ -4866,21 +4869,8 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
   // Crossing-month estimate: prefer noon on calendar last day of month;
   // if none (e.g. noon only on 30th while month ends 31st), use LAST noon of that month.
-  const getNoonOnLastDayOfMonth = (ship, voy, year, month) => {
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const inMonth = reports.filter(r =>
-      r.type === "noon" && r.ship === ship && r.voy === voy &&
-      (() => {
-        const d = new Date(r.ts);
-        return d.getFullYear() === year && d.getMonth() === month;
-      })()
-    );
-    if (inMonth.length === 0) return null;
-    const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDay);
-    const pool = onLastDay.length > 0 ? onLastDay : inMonth;
-    pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
-    return pool[0];
-  };
+  const getNoonOnLastDayOfMonth = (ship, voy, year, month) =>
+    getNoonForEstimate(reports, ship, voy, year, month);
 
   const noonEstLabel = "Noon Report (noon_ttl+(spd*12))";
   const calcEstFromNoon = (noon) => {

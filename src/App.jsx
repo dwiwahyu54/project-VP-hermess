@@ -4712,6 +4712,8 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
 }
 
 function ManagementReport({ reports, runningHours, user, consMe }) {
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
   const [fShip, setFShip] = useState("");
   const [fYear, setFYear] = useState(String(currentYear));   // default tahun ini
   const [fMonth, setFMonth] = useState(String(currentMonth)); // default bulan ini

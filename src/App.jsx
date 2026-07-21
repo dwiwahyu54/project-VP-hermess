@@ -4713,8 +4713,8 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
 
 function ManagementReport({ reports, runningHours, user, consMe }) {
   const [fShip, setFShip] = useState("");
-  const [fYear, setFYear] = useState("");
-  const [fMonth, setFMonth] = useState("");
+  const [fYear, setFYear] = useState(String(currentYear));   // default tahun ini
+  const [fMonth, setFMonth] = useState(String(currentMonth)); // default bulan ini
   const [showDetail, setShowDetail] = useState(false);
   const [showAnchorageDetail, setShowAnchorageDetail] = useState(false);
   const [showBerthingDetail, setShowBerthingDetail] = useState(false);

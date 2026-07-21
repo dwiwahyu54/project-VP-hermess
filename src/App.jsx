@@ -3022,19 +3022,12 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     }
   });
 
-  // Per-ship Total Distance (NM) - same formula as Management Report
-  // Sum of ttl_dist from arr_berth + arr_anchor reports, filtered by selected month/year
+  // Per-ship Total Distance (NM) — with cross-month split matching detail rows
+  const tYear = fYear ? Number(fYear) : new Date().getFullYear();
+  const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
   const TotalDistanceByShip = {};
   SHIPS.forEach(ship => {
-    const shipEntries = reports
-      .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ship === ship && r.ttl_dist)
-      .filter(r => {
-        const d = new Date(r.ts);
-        const yearOk = !fYear || d.getFullYear() === Number(fYear);
-        const monthOk = !fMonth || d.getMonth() === Number(fMonth);
-        return yearOk && monthOk;
-      });
-    TotalDistanceByShip[ship] = shipEntries.reduce((sum, r) => sum + (parseFloat(r.ttl_dist) || 0), 0);
+    TotalDistanceByShip[ship] = sumDistanceForMonth(reports, tYear, tMonth, ship);
   });
 
 
@@ -3316,13 +3309,7 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
 
   const DistancePrevByShip = {};
   SHIPS.forEach((ship) => {
-    DistancePrevByShip[ship] = reports
-      .filter((r) => ["arr_berth", "arr_anchor"].includes(r.type) && r.ship === ship && r.ttl_dist)
-      .filter((r) => {
-        const d = new Date(r.ts);
-        return d.getFullYear() === perfPrevYear && d.getMonth() === perfPrevMonth;
-      })
-      .reduce((sum, r) => sum + (parseFloat(r.ttl_dist) || 0), 0);
+    DistancePrevByShip[ship] = sumDistanceForMonth(reports, perfPrevYear, perfPrevMonth, ship);
   });
 
   const vesselPerfRows = [
@@ -3959,6 +3946,88 @@ function getTotalDistanceEntries(reports) {
   return reports
     .filter(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ttl_dist)
     .map(r => ({ ship: r.ship, voy: r.voy, ts: r.ts, dist: parseFloat(r.ttl_dist) || 0, type: r.type }));
+}
+
+// Helper: compute total distance per-ship with cross-month split, matching Management Report detail logic
+// sumDistanceForMonth(reports, year, month, ship) -> sum of distances for that ship in that month
+// If ship is null, sums all ships.
+function sumDistanceForMonth(reports, year, month, ship) {
+  const entries = getTotalDistanceEntries(reports);
+  const voys = computeVoyages(reports);
+  let total = 0;
+
+  entries.forEach(e => {
+    if (ship && e.ship !== ship) return;
+    const d = new Date(e.ts);
+    if (d.getFullYear() !== year || d.getMonth() !== month) return;
+
+    const voyObj = voys.find(v => v.ship === e.ship && v.no === e.voy);
+    const depTs = voyObj?.dep?.ts;
+
+    if (!depTs) {
+      // No departure info — full ttl_dist
+      total += e.dist;
+      return;
+    }
+
+    const depDate = new Date(depTs);
+    if (depDate.getFullYear() === year && depDate.getMonth() === month) {
+      // Same month — full ttl_dist
+      total += e.dist;
+    } else {
+      // Cross-month: only remainder belongs to arrival month
+      const lastDay = new Date(depDate.getFullYear(), depDate.getMonth() + 1, 0).getDate();
+      const inMonth = reports.filter(r =>
+        r.type === "noon" && r.ship === e.ship && r.voy === e.voy &&
+        (() => {
+          const nd = new Date(r.ts);
+          return nd.getFullYear() === depDate.getFullYear() && nd.getMonth() === depDate.getMonth();
+        })()
+      );
+      const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDay);
+      const pool = onLastDay.length > 0 ? onLastDay : inMonth;
+      pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+      const crossingNoon = pool.length > 0 ? pool[0] : null;
+
+      let estCrossDist = 0;
+      if (crossingNoon) {
+        const drun = parseFloat(crossingNoon.drun) || 0;
+        const spd = parseFloat(crossingNoon.spd != null && crossingNoon.spd !== ""
+          ? crossingNoon.spd : crossingNoon.avg_spd) || 0;
+        estCrossDist = drun + spd * 12;
+      }
+      const remainder = Math.max(0, e.dist - estCrossDist);
+      total += remainder;
+    }
+  });
+
+  // Also add underway voyages: if voyage hasn't arrived yet, add the crossing estimate
+  voys.forEach(v => {
+    if (ship && v.ship !== ship) return;
+    const alreadyHasArrival = entries.some(e => e.ship === v.ship && e.voy === v.no);
+    if (alreadyHasArrival) return;
+
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const inMonth = reports.filter(r =>
+      r.type === "noon" && r.ship === v.ship && r.voy === v.no &&
+      (() => {
+        const nd = new Date(r.ts);
+        return nd.getFullYear() === year && nd.getMonth() === month;
+      })()
+    );
+    if (inMonth.length === 0) return;
+    const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDayOfMonth);
+    const pool = onLastDay.length > 0 ? onLastDay : inMonth;
+    pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    const noon = pool[0];
+    if (!noon) return;
+    const drun = parseFloat(noon.drun) || 0;
+    const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
+    const estDist = drun + spd * 12;
+    if (estDist > 0) total += estDist;
+  });
+
+  return total;
 }
 
 function getAllDowntimeEntries(reports) {

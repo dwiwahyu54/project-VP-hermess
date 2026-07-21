@@ -3953,72 +3953,65 @@ function sumDistanceForMonth(reports, year, month, ship) {
   const voys = computeVoyages(reports);
   let total = 0;
 
+  const getCrossingNoon = (ship, voy, depYear, depMonth) => {
+    const lastDay = new Date(depYear, depMonth + 1, 0).getDate();
+    const inMonth = reports.filter(r =>
+      r.type === "noon" && r.ship === ship && r.voy === voy &&
+      (() => { const nd = new Date(r.ts); return nd.getFullYear() === depYear && nd.getMonth() === depMonth; })()
+    );
+    if (inMonth.length === 0) return null;
+    const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDay);
+    const pool = onLastDay.length > 0 ? onLastDay : inMonth;
+    pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    return pool[0];
+  };
+
+  const calcEstDist = (noon) => {
+    if (!noon) return 0;
+    const drun = parseFloat(noon.drun) || 0;
+    const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
+    return drun + spd * 12;
+  };
+
   entries.forEach(e => {
     if (ship && e.ship !== ship) return;
-    const d = new Date(e.ts);
-    if (d.getFullYear() !== year || d.getMonth() !== month) return;
-
     const voyObj = voys.find(v => v.ship === e.ship && v.no === e.voy);
     const depTs = voyObj?.dep?.ts;
+    const arrDate = new Date(e.ts);
+    const arrYear = arrDate.getFullYear(), arrMonth = arrDate.getMonth();
 
     if (!depTs) {
-      total += e.dist;
+      if (arrYear === year && arrMonth === month) total += e.dist;
       return;
     }
 
     const depDate = new Date(depTs);
-    if (depDate.getFullYear() === year && depDate.getMonth() === month) {
-      // Same month — full ttl_dist
-      total += e.dist;
-    } else {
-      // Cross-month: only remainder belongs to arrival month
-      const lastDay = new Date(depDate.getFullYear(), depDate.getMonth() + 1, 0).getDate();
-      const inMonth = reports.filter(r =>
-        r.type === "noon" && r.ship === e.ship && r.voy === e.voy &&
-        (() => {
-          const nd = new Date(r.ts);
-          return nd.getFullYear() === depDate.getFullYear() && nd.getMonth() === depDate.getMonth();
-        })()
-      );
-      const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDay);
-      const pool = onLastDay.length > 0 ? onLastDay : inMonth;
-      pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
-      const crossingNoon = pool.length > 0 ? pool[0] : null;
+    const depYear = depDate.getFullYear(), depMonth = depDate.getMonth();
 
-      let estCrossDist = 0;
-      if (crossingNoon) {
-        const drun = parseFloat(crossingNoon.drun) || 0;
-        const spd = parseFloat(crossingNoon.spd != null && crossingNoon.spd !== ""
-          ? crossingNoon.spd : crossingNoon.avg_spd) || 0;
-        estCrossDist = drun + spd * 12;
-      }
+    if (depYear === arrYear && depMonth === arrMonth) {
+      // Same month
+      if (arrYear === year && arrMonth === month) total += e.dist;
+    } else {
+      // Cross month
+      const crossingNoon = getCrossingNoon(e.ship, e.voy, depYear, depMonth);
+      const estCrossDist = calcEstDist(crossingNoon);
       const remainder = Math.max(0, e.dist - estCrossDist);
-      total += remainder;
+
+      // Departure month portion
+      if (depYear === year && depMonth === month && estCrossDist > 0) total += estCrossDist;
+      // Arrival month portion
+      if (arrYear === year && arrMonth === month) total += remainder;
     }
   });
 
-  // Underway voyages: estimate this month's portion
+  // Underway voyages
   voys.forEach(v => {
     if (ship && v.ship !== ship) return;
     const alreadyHasArrival = entries.some(e => e.ship === v.ship && e.voy === v.no);
     if (alreadyHasArrival) return;
-    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-    const inMonth = reports.filter(r =>
-      r.type === "noon" && r.ship === v.ship && r.voy === v.no &&
-      (() => {
-        const nd = new Date(r.ts);
-        return nd.getFullYear() === year && nd.getMonth() === month;
-      })()
-    );
-    if (inMonth.length === 0) return;
-    const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDayOfMonth);
-    const pool = onLastDay.length > 0 ? onLastDay : inMonth;
-    pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
-    const noon = pool[0];
+    const noon = getCrossingNoon(v.ship, v.no, year, month);
     if (!noon) return;
-    const drun = parseFloat(noon.drun) || 0;
-    const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
-    const estDist = drun + spd * 12;
+    const estDist = calcEstDist(noon);
     if (estDist > 0) total += estDist;
   });
 

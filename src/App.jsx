@@ -3964,7 +3964,7 @@ function getShipDistForMonth(reports, ship, year, month) {
   const crossNoon = (s, v, depY, depM) => {
     const lastDay = new Date(depY, depM + 1, 0).getDate();
     const inM = reports.filter(r =>
-      r.type === "noon" && r.ship === s && r.voy === v &&
+      r.type === "noon" && r.ship === s && (r.voy == v || String(r.voy) === String(v)) &&
       new Date(r.ts).getFullYear() === depY && new Date(r.ts).getMonth() === depM
     );
     if (inM.length === 0) return null;

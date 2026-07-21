@@ -4938,18 +4938,6 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     });
   }
 
-  // Recalculate TotalDistanceByShip from distanceDetailRows to match detail exactly
-  SHIPS.forEach(ship => {
-    const sum = distanceDetailRows.filter(r => r.ship === ship).reduce((s, r) => s + r.dist, 0);
-    TotalDistanceByShip[ship] = sum;
-  });
-  // Override vesselPerfRows card
-  vesselPerfRows.forEach(row => {
-    if (row.label === "Total Miles Laut") {
-      row.cm = Object.values(TotalDistanceByShip).reduce((s, v) => s + v, 0);
-    }
-  });
-
   // --- Average Speed ---
   // With filter Year+Month:
   //   For month N:

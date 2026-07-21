@@ -3956,49 +3956,58 @@ function getTotalDistanceEntries(reports) {
 
 // Get total distance for a ship+month using the same cross-month split as Management Report detail
 function getShipDistForMonth(reports, ship, year, month) {
-  const entries = getTotalDistanceEntries(reports).filter(e => e.ship === ship);
-  const voys = computeVoyages(reports).filter(v => v.ship === ship);
+  const distEnt = getTotalDistanceEntries(reports).filter(e => e.ship === ship);
+  const voys = computeVoyages(reports);
   let total = 0;
 
-  // Helper: find last noon in dep month
-  const lastNoonInMonth = (s, v, y, m) => {
-    const lastDay = new Date(y, m + 1, 0).getDate();
+  // Helper: last noon in departure month (same logic as detail section getNoonOnLastDayOfMonth)
+  const crossNoon = (s, v, depY, depM) => {
+    const lastDay = new Date(depY, depM + 1, 0).getDate();
     const inM = reports.filter(r =>
       r.type === "noon" && r.ship === s && r.voy === v &&
-      new Date(r.ts).getFullYear() === y && new Date(r.ts).getMonth() === m
+      new Date(r.ts).getFullYear() === depY && new Date(r.ts).getMonth() === depM
     );
     if (inM.length === 0) return null;
     const onLast = inM.filter(r => new Date(r.ts).getDate() === lastDay);
-    return (onLast.length ? onLast : inM).sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+    return (onLast.length > 0 ? onLast : inM).sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
   };
 
-  entries.forEach(e => {
-    const voy = voys.find(v => v.no === e.voy);
-    const depTs = voy?.dep?.ts;
+  const estFromNoon = (noon) => {
+    if (!noon) return 0;
+    const drun = parseFloat(noon.drun) || 0;
+    const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
+    return drun + spd * 12;
+  };
+
+  distEnt.forEach(e => {
+    const voyObj = voys.find(v => v.ship === e.ship && (v.no == e.voy || String(v.no) === String(e.voy)));
+    const depTs = voyObj?.dep?.ts;
+    if (!depTs) { total += e.dist; return; }
     const arrD = new Date(e.ts);
     const arrY = arrD.getFullYear(), arrM = arrD.getMonth();
-    if (!depTs) { if (arrY === year && arrM === month) total += e.dist; return; }
     const depD = new Date(depTs);
     const depY = depD.getFullYear(), depM = depD.getMonth();
+
     if (depY === arrY && depM === arrM) {
       if (arrY === year && arrM === month) total += e.dist;
     } else {
-      const crossNoon = lastNoonInMonth(e.ship, e.voy, depY, depM);
-      const est = crossNoon ? ((parseFloat(crossNoon.drun) || 0) + (parseFloat(crossNoon.spd || crossNoon.avg_spd) || 0) * 12) : 0;
+      const noon = crossNoon(e.ship, e.voy, depY, depM);
+      const est = estFromNoon(noon);
       if (depY === year && depM === month && est > 0) total += est;
       if (arrY === year && arrM === month) total += Math.max(0, e.dist - est);
     }
   });
 
   // Underway estimate
-  voys.forEach(v => {
-    if (entries.some(e => e.voy === v.no)) return;
-    const noon = lastNoonInMonth(v.ship, v.no, year, month);
+  voys.filter(v => v.ship === ship).forEach(v => {
+    if (distEnt.some(e => e.ship === v.ship && (e.voy == v.no || String(e.voy) === String(v.no)))) return;
+    const noon = crossNoon(v.ship, v.no, year, month);
     if (noon) {
-      const est = (parseFloat(noon.drun) || 0) + (parseFloat(noon.spd || noon.avg_spd) || 0) * 12;
+      const est = estFromNoon(noon);
       if (est > 0) total += est;
     }
   });
+
   return total;
 }
 

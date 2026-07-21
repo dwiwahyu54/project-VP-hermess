@@ -4980,6 +4980,12 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     });
   }
 
+  // Override card Total Miles Laut with totalDistance from detail
+  vesselPerfRows[1].cm = totalDistance;
+  // Also sync TotalDistanceByShip for table column
+  SHIPS.forEach(ship => { TotalDistanceByShip[ship] = 0; });
+  distanceDetailRows.forEach(r => { TotalDistanceByShip[r.ship] += r.dist; });
+
   // --- Average Speed ---
   // With filter Year+Month:
   //   For month N:

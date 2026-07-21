@@ -3023,11 +3023,9 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
   });
 
   // Per-ship Total Distance (NM) — with cross-month split matching detail rows
-  const tYear = fYear ? Number(fYear) : null;
-  const tMonth = fMonth !== "" ? Number(fMonth) : null;
   const TotalDistanceByShip = {};
   SHIPS.forEach(ship => {
-    TotalDistanceByShip[ship] = sumDistanceForMonth(reports, tYear, tMonth, ship);
+    TotalDistanceByShip[ship] = sumDistanceForMonth(reports, fYear ? Number(fYear) : new Date().getFullYear(), fMonth !== "" ? Number(fMonth) : new Date().getMonth(), ship);
   });
 
 
@@ -3949,25 +3947,16 @@ function getTotalDistanceEntries(reports) {
 }
 
 // Helper: compute total distance per-ship with cross-month split, matching Management Report detail logic
-// sumDistanceForMonth(reports, year, month, ship) -> sum of distances for that ship in that month/year combo
-// If year is null, sums all months of the current year.
-// If month is null, sums all months of that year.
-// If ship is null, sums all ships.
+// sumDistanceForMonth(reports, year, month, ship) -> sum of distances for that ship in that month
 function sumDistanceForMonth(reports, year, month, ship) {
   const entries = getTotalDistanceEntries(reports);
   const voys = computeVoyages(reports);
   let total = 0;
 
-  const matchesTime = (ts, y, m) => {
-    const d = new Date(ts);
-    if (y !== null && d.getFullYear() !== y) return false;
-    if (m !== null && d.getMonth() !== m) return false;
-    return true;
-  };
-
   entries.forEach(e => {
     if (ship && e.ship !== ship) return;
-    if (!matchesTime(e.ts, year, month)) return;
+    const d = new Date(e.ts);
+    if (d.getFullYear() !== year || d.getMonth() !== month) return;
 
     const voyObj = voys.find(v => v.ship === e.ship && v.no === e.voy);
     const depTs = voyObj?.dep?.ts;
@@ -3978,7 +3967,7 @@ function sumDistanceForMonth(reports, year, month, ship) {
     }
 
     const depDate = new Date(depTs);
-    if (matchesTime(depTs, year, month)) {
+    if (depDate.getFullYear() === year && depDate.getMonth() === month) {
       // Same month — full ttl_dist
       total += e.dist;
     } else {
@@ -4008,29 +3997,30 @@ function sumDistanceForMonth(reports, year, month, ship) {
     }
   });
 
-  // Also add underway voyages: if voyage hasn't arrived yet, add the crossing estimate
-  if (year !== null && month !== null) {
-    voys.forEach(v => {
-      if (ship && v.ship !== ship) return;
-      const alreadyHasArrival = entries.some(e => e.ship === v.ship && e.voy === v.no);
-      if (alreadyHasArrival) return;
-
-      const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-      const inMonth = reports.filter(r =>
-        r.type === "noon" && r.ship === v.ship && r.voy === v.no && matchesTime(r.ts, year, month)
-      );
-      if (inMonth.length === 0) return;
-      const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDayOfMonth);
-      const pool = onLastDay.length > 0 ? onLastDay : inMonth;
-      pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
-      const noon = pool[0];
-      if (!noon) return;
-      const drun = parseFloat(noon.drun) || 0;
-      const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
-      const estDist = drun + spd * 12;
-      if (estDist > 0) total += estDist;
-    });
-  }
+  // Underway voyages: estimate this month's portion
+  voys.forEach(v => {
+    if (ship && v.ship !== ship) return;
+    const alreadyHasArrival = entries.some(e => e.ship === v.ship && e.voy === v.no);
+    if (alreadyHasArrival) return;
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const inMonth = reports.filter(r =>
+      r.type === "noon" && r.ship === v.ship && r.voy === v.no &&
+      (() => {
+        const nd = new Date(r.ts);
+        return nd.getFullYear() === year && nd.getMonth() === month;
+      })()
+    );
+    if (inMonth.length === 0) return;
+    const onLastDay = inMonth.filter(r => new Date(r.ts).getDate() === lastDayOfMonth);
+    const pool = onLastDay.length > 0 ? onLastDay : inMonth;
+    pool.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    const noon = pool[0];
+    if (!noon) return;
+    const drun = parseFloat(noon.drun) || 0;
+    const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
+    const estDist = drun + spd * 12;
+    if (estDist > 0) total += estDist;
+  });
 
   return total;
 }

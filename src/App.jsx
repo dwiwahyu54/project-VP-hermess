@@ -4938,10 +4938,6 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     });
   }
 
-  // Sync TotalDistanceByShip with detail rows (cross-month split)
-  SHIPS.forEach(ship => { TotalDistanceByShip[ship] = 0; });
-  distanceDetailRows.forEach(r => { TotalDistanceByShip[r.ship] = (TotalDistanceByShip[r.ship] || 0) + r.dist; });
-
   // --- Average Speed ---
   // With filter Year+Month:
   //   For month N:

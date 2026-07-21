@@ -4980,8 +4980,6 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     });
   }
 
-  vesselPerfRows[1].cm = totalDistance;
-
   // --- Average Speed ---
   // With filter Year+Month:
   //   For month N:

@@ -3974,7 +3974,7 @@ function getShipDistForMonth(reports, ship, year, month) {
 
   const estFromNoon = (noon) => {
     if (!noon) return 0;
-    const drun = parseFloat(noon.drun) || 0;
+    const drun = parseFloat(noon.ttl_dist) || 0;
     const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
     return drun + spd * 12;
   };
@@ -4861,7 +4861,7 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
   const arrTypeLabel = (type, cross) => {
     const base = type === "arr_berth" ? "Arrival Berthing" : type === "arr_anchor" ? "Arrival Anchorage" : (type || "Arrival");
-    return cross ? `${base} (ttl_dist - (drun+(spd*12)))` : base;
+    return cross ? `${base} (ttl_dist - (noon_ttl+(spd*12)))` : base;
   };
 
   // Crossing-month estimate: prefer noon on calendar last day of month;
@@ -4882,10 +4882,10 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
     return pool[0];
   };
 
-  const noonEstLabel = "Noon Report (drun+(spd*12))";
+  const noonEstLabel = "Noon Report (noon_ttl+(spd*12))";
   const calcEstFromNoon = (noon) => {
     if (!noon) return 0;
-    const drun = parseFloat(noon.drun) || 0;
+    const drun = parseFloat(noon.ttl_dist) || 0;
     const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
     return drun + spd * 12;
   };

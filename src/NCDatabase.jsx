@@ -814,7 +814,7 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
           </div>
 
           <div className="flex gap-2">
-            {!shipScope && (
+            {!shipScope && user?.email === "dwi.wahyu@mentarimas.id" && (
               <>
                 <input
                   ref={fileInputRef}

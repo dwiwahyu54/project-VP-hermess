@@ -1033,6 +1033,7 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
               <Th label="Risk" sortKey="risk" active={sortKey} dir={sortDir} onClick={toggleSort} T={T} />
               <Th label="Issued" sortKey="issuedDate" active={sortKey} dir={sortDir} onClick={toggleSort} T={T} />
               <Th label="Due" sortKey="dueDate" active={sortKey} dir={sortDir} onClick={toggleSort} T={T} />
+              <Th label="Closed" sortKey="closedDate" active={sortKey} dir={sortDir} onClick={toggleSort} T={T} />
               <Th label="Status" sortKey="status" active={sortKey} dir={sortDir} onClick={toggleSort} T={T} />
             </tr>
           </thead>
@@ -1070,13 +1071,16 @@ export default function NCDatabase({ theme: themeProp, user } = {}) {
                     <td className="py-2 px-2 font-mono text-xs whitespace-nowrap" style={{ color: T.textSecondary }}>
                       {r.dueDate || "—"}
                     </td>
+                    <td className="py-2 px-2 font-mono text-xs whitespace-nowrap" style={{ color: T.textSecondary }}>
+                      {r.closedDate || "—"}
+                    </td>
                     <td className="py-2 px-2">
                       <StatusStamp status={r.status} T={T} />
                     </td>
                   </tr>
                   {isOpen && (
                     <tr style={{ borderBottom: `1px solid ${T.border}`, background: T.panel }}>
-                      <td colSpan={8} className="px-4 py-3">
+                      <td colSpan={9} className="px-4 py-3">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                           <Detail label="Deskripsi lengkap" value={r.description} T={T} span2 />
                           <Detail label="Audit / Survey" value={r.auditType} T={T} />

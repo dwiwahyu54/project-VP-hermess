@@ -4012,7 +4012,6 @@ function getShipDistForMonth(reports, ship, year, month) {
     } else {
       const noon = getNoonForEstimate(reports, e.ship, e.voy, depY, depM);
       const est = estFromNoon(noon);
-      console.log("getShipDistForMonth - ship:", e.ship, "voy:", e.voy, "dist:", e.dist, "est:", est, "dep:", `${depY}-${depM+1}`, "arr:", `${arrY}-${arrM+1}`);
       if (depY === year && depM === month && est > 0) total += est;
       if (arrY === year && arrM === month) total += Math.max(0, e.dist - est);
     }
@@ -4936,7 +4935,6 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
       // Crosses month boundary
       const crossingNoon = getNoonOnLastDayOfMonth(e.ship, e.voy, depYear, depMonth);
       const estCrossDist = calcEstFromNoon(crossingNoon);
-      console.log("ManagementReport - voyage:", e.ship, e.voy, "dist:", e.dist, "est:", estCrossDist, "dep:", `${depYear}-${depMonth+1}`, "arr:", `${arrYear}-${arrMonth+1}`);
       const remainder = Math.max(0, e.dist - estCrossDist);
 
       // Departure month → estCrossDist (noon)

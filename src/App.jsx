@@ -382,7 +382,7 @@ function initForm() {
     type:"departure", ship:"", voy:"", ts:nowStr(), master:"", port:"", rmk:"",
     dist_go:"", eta_dest:"", tug:"",dest:"",posisi:"",ttl_avg_spd:"",
     ttl_dist:"", steam:"", avg_spd:"", man_dist:"", man_time:"",
-    lat:"", lon:"", spd:"", crs:"", drun:"", drem:"", steam_nn:"",
+    lat:"", lon:"", spd:"", crs:"", drun:"", drem:"", steam_nn:"", rpm:"",
     wx:"Fine", wdir:"N", wbf:"3", sea:"Slight",
     t0:nowStr(), t1:nowStr(), cat:"Engine Breakdown", desc:"", action:"",
     ballast:"", gm:"", drf:"", drm:"", dra:"",
@@ -568,7 +568,8 @@ function buildWA(r, allReports) {
   if (r.ttl_dist) {
     if (r.type === "noon") {
       let distLine = `Total Dist: ${r.ttl_dist} NM`;
-      if (r.steam) distLine += ` | Total Steaming: ${r.steam}`;
+      if (r.drun) distLine += ` | Dist Run (noon->noon): ${r.drun} NM`;
+      if (r.drem != null && r.drem !== "") distLine += ` | Remaining: ${r.drem} NM`;
       L.push(distLine);
     } else {
       let distLine = `Total Dist: ${r.ttl_dist} NM`;
@@ -577,27 +578,40 @@ function buildWA(r, allReports) {
       L.push(distLine);
     }
   }
-  if (r.drun || r.drem) {
-    let runLine = "";
-    if (r.drun) runLine += `Dist Run (noon->noon): ${r.drun} NM`;
-    if (r.drem != null && r.drem !== "") runLine += (runLine ? ` | Remaining: ${r.drem} NM` : `Remaining: ${r.drem} NM`);
-    if (runLine) L.push(runLine);
-  }
-  if (r.type === "noon" && (r.steam_nn || r.steam)) {
-    // steam already on total dist line; steam_nn separate
-    if (r.steam_nn) L.push(`Steaming (noon->noon): ${r.steam_nn}`);
-  }
-  if (r.spd || r.total_avg_spd) {
+  if (r.type === "noon") {
+    // Steaming lines combined
+    let steamLine = "";
+    if (r.steam) steamLine += `Total Steaming: ${r.steam}`;
+    if (r.steam_nn) steamLine += (steamLine ? ` | Steaming (noon->noon): ${r.steam_nn}` : `Steaming (noon->noon): ${r.steam_nn}`);
+    if (steamLine) L.push(steamLine);
+    // Speed + Course
     let speedLine = "";
     if (r.spd) speedLine += `Avg Speed: ${r.spd} kts`;
-    if (r.ttl_avg_spd && r.type === "noon") {
-      speedLine += speedLine ? ` | Total Avg Speed: ${r.ttl_avg_spd} kts` : `Total Avg Speed: ${r.ttl_avg_spd} kts`;
-    }
+    if (r.ttl_avg_spd) speedLine += (speedLine ? ` | Total Avg Speed: ${r.ttl_avg_spd} kts` : `Total Avg Speed: ${r.ttl_avg_spd} kts`);
     if (r.crs) speedLine += ` | Course: ${r.crs}°`;
     L.push(speedLine);
+    // RPM
+    if (r.rpm) L.push(`Rpm: ${r.rpm}`);
+    // Weather
+    if (r.wx) L.push(`Weather: ${r.wx} | Wind: ${r.wdir || ""} ${r.wbf ? "Bf" + r.wbf : ""} | Sea: ${r.sea || ""}`);
+  } else {
+    if (r.drun || r.drem) {
+      let runLine = "";
+      if (r.drun) runLine += `Dist Run (noon->noon): ${r.drun} NM`;
+      if (r.drem != null && r.drem !== "") runLine += (runLine ? ` | Remaining: ${r.drem} NM` : `Remaining: ${r.drem} NM`);
+      if (runLine) L.push(runLine);
+    }
+    if (r.spd || r.ttl_avg_spd) {
+      let speedLine = "";
+      if (r.spd) speedLine += `Avg Speed: ${r.spd} kts`;
+      if (r.ttl_avg_spd && r.type === "noon") {
+        speedLine += speedLine ? ` | Total Avg Speed: ${r.ttl_avg_spd} kts` : `Total Avg Speed: ${r.ttl_avg_spd} kts`;
+      }
+      if (r.crs) speedLine += ` | Course: ${r.crs}°`;
+      L.push(speedLine);
+    }
+    if (r.wx && ["noon","shelter_arr","shelter_dep"].includes(r.type)) L.push(`Weather: ${r.wx} | Wind: ${r.wdir} Bf${r.wbf} | Sea: ${r.sea}`);
   }
-  
-  if (r.wx && ["noon","shelter_arr","shelter_dep"].includes(r.type)) L.push(`Weather: ${r.wx} | Wind: ${r.wdir} Bf${r.wbf} | Sea: ${r.sea}`);
   if (r.type === "downtime") {
     L.push(`Downtime: ${fmtDT(r.t0)} → ${fmtDT(r.t1)} (${fmtH(diffH(r.t0, r.t1))})`);
     L.push(`Category: ${r.cat}`);
@@ -1582,6 +1596,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
       posisi: fref.current.posisi,
       spd: fref.current.spd ? parseFloat(fref.current.spd) : null,
       crs: fref.current.crs,
+      rpm: fref.current.rpm,
       drun: fref.current.drun ? parseFloat(fref.current.drun) : null,
       drem: fref.current.drem ? parseFloat(fref.current.drem) : null,
       wx: fref.current.wx,
@@ -1934,7 +1949,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
           <>
             <div className="voyage-row2" style={ss.row2}>{F("Latitude","lat",null,null,"05°30'S")}{F("Longitude","lon",null,null,"112°15'E")}</div>
             {F("Posisi","posisi",null,null,"Laut Jawa / Berthing Surabaya / Rede Surabaya")}
-            <div className="voyage-row3" style={ss.row3}>{F("Avg Speed (kts)","spd")}{F("Total Avg Speed (kts)","ttl_avg_spd")}{F("Course (°)","crs")}{F("ETA","eta_dest",null,"datetime-local",null)}</div>
+            <div className="voyage-row3" style={ss.row3}>{F("Avg Speed (kts)","spd")}{F("Total Avg Speed (kts)","ttl_avg_spd")}{F("Course (°)","crs")}{F("RPM","rpm")}{F("ETA","eta_dest",null,"datetime-local",null)}</div>
             <div className="voyage-row2" style={ss.row3}>{F("Dist Run (NM) - noon->noon","drun")}{F("Total Dist Run (NM)","ttl_dist")}{F("Dist Remain (NM)","drem")}</div>
             <div className="voyage-row2" style={ss.row2}>{F("Total Steaming Time","steam",null,null,"e.g. 120:35")}{F("Steaming Time (noon->noon)","steam_nn",null,null,"e.g. 24:10")}</div>
             <hr style={ss.divider}/>

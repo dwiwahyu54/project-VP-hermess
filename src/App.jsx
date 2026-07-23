@@ -1596,7 +1596,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
       posisi: fref.current.posisi,
       spd: fref.current.spd ? parseFloat(fref.current.spd) : null,
       crs: fref.current.crs,
-      rpm: fref.current.rpm,
+      rpm: fref.current.rpm ? parseFloat(fref.current.rpm) : null,
       drun: fref.current.drun ? parseFloat(fref.current.drun) : null,
       drem: fref.current.drem ? parseFloat(fref.current.drem) : null,
       wx: fref.current.wx,

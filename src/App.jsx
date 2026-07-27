@@ -693,7 +693,8 @@ if (totals.box > 0) {
   
   // ✅ GRAND TOTAL - pakai totals
   L.push(`  Grand Total: ${totals.box} Box | ${totals.teus.toFixed()} TEUS | ${totals.ton.toFixed()} Ton`);
-  if (r.ballast) L.push(`Ballast: ${r.ballast} Ton | GM: ${r.gm||"-"} M`);
+  if (r.ballast) L.push(`Ballast: ${r.ballast} Ton`);
+  if (r.gm != null && r.gm !== "") L.push(`GM: ${r.gm} M`);
   if (r.drf)     L.push(`Draft: F ${r.drf}m / M ${r.drm||"-"}m / A ${r.dra||"-"}m`);
   }
   // Tank Condition

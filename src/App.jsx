@@ -592,6 +592,8 @@ function buildWA(r, allReports) {
     L.push(speedLine);
     // RPM
     if (r.rpm) L.push(`Rpm: ${r.rpm}`);
+    // GM
+    if (r.gm != null && r.gm !== "") L.push(`GM: ${r.gm} m`);
     // Weather
     if (r.wx) L.push(`Weather: ${r.wx} | Wind: ${r.wdir || ""} ${r.wbf ? "Bf" + r.wbf : ""} | Sea: ${r.sea || ""}`);
   } else {

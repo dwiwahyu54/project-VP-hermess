@@ -3501,12 +3501,32 @@ const handleDownloadExcel = async () => {
       distDetailData.push([e.ship, e.voy, fmtDateForCSV(e.ts), e.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage", e.dist.toFixed(1)]);
     }
   });
+  // SHEET 6: AVERAGE SPEED
+  const avgSpeedHeaders = ["Nama Kapal", "Voy", "Tanggal", "Sumber", "Avg Speed (kts)"];
+  const avgSpeedData = [avgSpeedHeaders];
+  const tYr = Number(fYear);
+  const tMth = fMonth !== "" ? Number(fMonth) : -1;
+  reports
+    .filter(r => ["arr_berth","arr_anchor"].includes(r.type))
+    .filter(r => !fShip || r.ship === fShip)
+    .filter(r => {
+      if (tMth < 0) return true;
+      const d = new Date(r.ts);
+      return d.getFullYear() === tYr && d.getMonth() === tMth;
+    })
+    .filter(r => { const s = parseFloat(r.avg_spd || r.spd); return !isNaN(s) && s > 0; })
+    .forEach(r => {
+      const s = parseFloat(r.avg_spd || r.spd);
+      const rt = RT.find(t => t.id === r.type);
+      avgSpeedData.push([r.ship, r.voy || "", fmtDateForCSV(r.ts), rt?.short || r.type, s.toFixed(2)]);
+    });
   const sheets = [
     { name: "Vessel Activity", data: activityData, widths: [5, 20, 14, 14, 14, 14, 10, 12, 12, 14, 14, 12, 14, 14, 14, 12, 12, 12, 12, 12] },
     { name: "Anchorage Time", data: anchData, widths: [18, 12, 8, 22, 22, 16] },
     { name: "Berthing Time", data: berthData, widths: [18, 12, 8, 22, 22, 16] },
     { name: "Downtime Report", data: dtData, widths: [18, 20, 20, 14, 30, 18] },
     { name: "Rincian Total Distance", data: distDetailData, widths: [18, 10, 20, 22, 16] },
+    { name: "Average Speed", data: avgSpeedData, widths: [18, 10, 20, 22, 14] },
   ];
   
   await downloadMultiSheetExcel(sheets, `MMM_Report_${tYear}_${curLabel}.xlsx`);
@@ -5357,7 +5377,26 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
       {showAvgSpeedDetail && (
         <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
-          <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>📋 Rincian Average Speed</div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+            <div style={{ fontSize:13, fontWeight:700 }}>📋 Rincian Average Speed</div>
+            {avgSpeedRows.length > 0 && (
+              <button
+                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
+                onClick={() => {
+                  const parts = ["avg-speed"];
+                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
+                  if (fYear) parts.push(fYear);
+                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
+                  downloadCSV(
+                    ["Nama Kapal","Tanggal","Jenis Laporan","Speed (kts)"],
+                    avgSpeedRows,
+                    row => [row.ship, fmtDateForCSV(row.ts), row.label, row.spd.toFixed(2)],
+                    parts.join("_") + ".csv"
+                  );
+                }}
+              >⬇️ Download CSV</button>
+            )}
+          </div>
           {avgSpeedRows.length === 0 ? (
             <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
           ) : (

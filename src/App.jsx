@@ -617,6 +617,7 @@ function buildWA(r, allReports) {
   if (r.type === "downtime") {
     L.push(`Downtime: ${fmtDT(r.t0)} → ${fmtDT(r.t1)} (${fmtH(diffH(r.t0, r.t1))})`);
     L.push(`Category: ${r.cat}`);
+    if (r.dist_go) L.push(`Dist To Go: ${r.dist_go} NM`);
     if (r.desc)   L.push(`Desc: ${r.desc}`);
     if (r.action) L.push(`Action: ${r.action}`);
   }
@@ -1989,6 +1990,7 @@ function ReportForm({ onSave, onCancel, editReport, onUpdate, allReports, user }
             </div>
             {F("Kategori","cat",DTCATS)}
             {F("Deskripsi","desc")}
+            {F("Dist To Go (NM)","dist_go")}
             {F("Action Taken","action")}
           </>
         )}

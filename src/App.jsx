@@ -4772,17 +4772,24 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
   const matchedEntries = [];
 
   filteredEntries.forEach(e => {
+    // Downtime lintas bulan dipecah tepat pada pukul 24.00 hari terakhir bulan.
+    // Setiap segmen masuk sebagai baris tersendiri di rincian dan CSV.
     const segs = splitByMonth(e.t0, e.t1);
-    let matchedHours = 0;
     segs.forEach(seg => {
       const yearOk  = !fYear  || seg.year === Number(fYear);
       const monthOk = !fMonth || seg.month === Number(fMonth);
-      if (yearOk && monthOk) matchedHours += seg.hours;
+      if (!yearOk || !monthOk) return;
+
+      totalDtH += seg.hours;
+      matchedEntries.push({
+        ...e,
+        t0: seg.start,
+        t1: seg.end,
+        durationH: seg.hours,
+        segmentYear: seg.year,
+        segmentMonth: seg.month,
+      });
     });
-    if (matchedHours > 0 || (!fYear && !fMonth)) {
-      totalDtH += (!fYear && !fMonth) ? e.durationH : matchedHours;
-      matchedEntries.push(e);
-    }
   });
 
   const curLabel = fMonth !== "" ? MONTHS[fMonth] : "June";

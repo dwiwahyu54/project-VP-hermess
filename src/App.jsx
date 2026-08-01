@@ -3141,15 +3141,17 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     ConsMeByShip[ship] = val != null && val !== "" ? parseFloat(val) : null;
   });
 
-  // Per-ship Cons ME current month for Avg/Mile calculation
+  // Per-ship Cons ME current month for Avg/Mile calculation.
+  // Fallback tolerates DB ship names stored with an "MV " prefix.
   const ConsMeCurByShip = {};
   SHIPS.forEach(ship => {
     const tYear = fYear ? Number(fYear) : new Date().getFullYear();
     const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
     const curKey = `${ship}|${tYear}|${tMonth}`;
-    const val = consMe?.[curKey]?.cons_me;
+    const mvKey = `MV ${ship}|${tYear}|${tMonth}`;
+    const entry = consMe?.[curKey] ?? consMe?.[mvKey];
+    const val = entry?.cons_me;
     ConsMeCurByShip[ship] = val != null && val !== "" ? parseFloat(val) : null;
-
   });
   // Per-ship Cons AE from consMe state for AE at Port calculation
   const ConsMeAePrevByShip = {};
@@ -4704,6 +4706,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
               <div style={ss.fg}>
                 <label style={ss.lbl}>Cons ME (KL)</label>
                 <input
+                  key={`cons-me-${consMeShip}-${consMeYear}-${consMeMonth}`}
                   style={ss.inp}
                   type="text"
                   placeholder="0"
@@ -4720,6 +4723,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
               <div style={ss.fg}>
                 <label style={ss.lbl}>Cons AE (KL)</label>
                 <input
+                  key={`cons-ae-${consMeShip}-${consMeYear}-${consMeMonth}`}
                   style={ss.inp}
                   className="cons-ae-input"
                   type="text"

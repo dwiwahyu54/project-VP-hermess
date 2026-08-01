@@ -3642,14 +3642,62 @@ const handleDownloadExcel = async () => {
       pushDistRow(v.ship, v.no, noon.ts, estDist, "Noon Report (noon_ttl+(spd*12))");
     });
   }
-  // SHEET 6: AVERAGE SPEED (identik dengan kolom tabel app: prev & cur per kapal)
-  const avgSpeedHeaders = ["Nama Kapal", `AVG Speed ${prevLabel}`, `AVG Speed ${curLabel}`];
+  // SHEET 6: RINCIAN AVERAGE SPEED — sumber per laporan, sama seperti rincian di app
+  const avgSpeedHeaders = ["Nama Kapal", "Voy", "Tanggal", "Jenis Laporan / Sumber", "Speed (kts)"];
   const avgSpeedData = [avgSpeedHeaders];
-  SHIPS.forEach(ship => {
-    if (!fShip || fShip === ship) {
-      avgSpeedData.push([ship, AvgSpeedPrevByShip[ship] || "", AvgSpeedByShip[ship] || ""]);
+  const avgSpeedDetail = [];
+  const addSpeedDetail = (r, label) => {
+    const spd = parseFloat(r?.avg_spd || r?.spd);
+    if (r && !isNaN(spd) && spd > 0 && !avgSpeedDetail.some(x => x.ship === r.ship && x.ts === r.ts)) {
+      avgSpeedDetail.push({ ship:r.ship, voy:r.voy, ts:r.ts, spd, label });
     }
+  };
+
+  if (fYear && fMonth !== "") {
+    const speedYear = Number(fYear);
+    const speedMonth = Number(fMonth);
+    const nextMonthRaw = speedMonth + 1;
+    const speedNextYear = nextMonthRaw > 11 ? speedYear + 1 : speedYear;
+    const speedNextMonth = nextMonthRaw > 11 ? 0 : nextMonthRaw;
+
+    // Arrival dalam bulan filter
+    reports
+      .filter(r => ["arr_berth","arr_anchor"].includes(r.type))
+      .filter(r => !fShip || r.ship === fShip)
+      .filter(r => { const d=new Date(r.ts); return d.getFullYear()===speedYear && d.getMonth()===speedMonth; })
+      .forEach(r => addSpeedDetail(r, r.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage"));
+
+    // Voyage belum arrival: cut-off tanggal 1 bulan berikutnya sebelum/noon 12.00
+    voys.filter(v => !fShip || v.ship === fShip).forEach(v => {
+      const hasArrival = reports.some(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ship===v.ship && String(r.voy)===String(v.no) && (()=>{const d=new Date(r.ts);return d.getFullYear()===speedYear&&d.getMonth()===speedMonth;})());
+      if (hasArrival) return;
+      const hasNoon = reports.some(r => r.type==="noon" && r.ship===v.ship && String(r.voy)===String(v.no) && (()=>{const d=new Date(r.ts);return d.getFullYear()===speedYear&&d.getMonth()===speedMonth;})());
+      if (!hasNoon) return;
+      const arr = getFirstArrivalBeforeNoon(v.ship, v.no, speedNextYear, speedNextMonth, 1);
+      if (arr) addSpeedDetail(arr, `Arrival ${arr.type === "arr_berth" ? "Berthing" : "Anchorage"} (1 ${MONTHS_ID[speedNextMonth]})`);
+      else {
+        const noon = getFirstNoonOnDate(v.ship, v.no, speedNextYear, speedNextMonth, 1);
+        if (noon) addSpeedDetail(noon, `Noon (1 ${MONTHS_ID[speedNextMonth]}) [No Arr.1]`);
+      }
+    });
+  } else {
+    // Tanpa filter: seluruh arrival valid + noon terakhir untuk voyage tanpa arrival
+    reports.filter(r => ["arr_berth","arr_anchor"].includes(r.type) && (!fShip || r.ship===fShip))
+      .forEach(r => addSpeedDetail(r, r.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage"));
+    voys.filter(v => !fShip || v.ship===fShip).forEach(v => {
+      const hasArrival = reports.some(r => ["arr_berth","arr_anchor"].includes(r.type) && r.ship===v.ship && String(r.voy)===String(v.no));
+      if (hasArrival) return;
+      const noons = reports.filter(r => r.type==="noon" && r.ship===v.ship && String(r.voy)===String(v.no)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+      if (noons[0]) addSpeedDetail(noons[0], "Noon (Last) [No Arr.]");
+    });
+  }
+  avgSpeedDetail.sort((a,b) => new Date(a.ts)-new Date(b.ts)).forEach(r => {
+    avgSpeedData.push([r.ship, r.voy || "", fmtDT(r.ts), r.label, r.spd.toFixed(2)]);
   });
+  if (avgSpeedDetail.length > 0) {
+    const avg = avgSpeedDetail.reduce((s,r)=>s+r.spd,0) / avgSpeedDetail.length;
+    avgSpeedData.push(["AVERAGE", "", "", "", avg.toFixed(2)]);
+  }
   const sheets = [
     { name: "Vessel Activity", data: activityData, widths: [5, 20, 14, 14, 14, 14, 10, 12, 12, 14, 14, 12, 14, 14, 14, 12, 12, 12, 12, 12] },
     { name: "Anchorage Time", data: anchData, widths: [18, 12, 8, 22, 22, 16] },

@@ -3531,7 +3531,7 @@ const handleDownloadExcel = async () => {
   // SHEET 2: ANCHORAGE TIME (netH = segmen − downtime overlap, identik dengan app)
   const anchHeaders = ["Nama Kapal", "Bulan", "Tahun", "Anchorage (EOSV Arrival)", "Berthing (FWE)", "Anchorage Time (hari)"];
   const anchData = [anchHeaders];
-  const anchEntries = getAnchorageTimeEntries(reports);
+  const anchEntries = getAnchorageTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
   anchEntries.forEach(e => {
     const segs = splitByMonth(e.t0, e.t1);
     segs.forEach(seg => {
@@ -3548,7 +3548,7 @@ const handleDownloadExcel = async () => {
   // SHEET 3: BERTHING TIME (netH = segmen − downtime overlap, identik dengan app)
   const berthHeaders = ["Nama Kapal", "Bulan", "Tahun", "Berthing (FWE)", "Departure (BOSV)", "Berthing Time (hari)"];
   const berthData = [berthHeaders];
-  const berthEntries = getBerthingTimeEntries(reports);
+  const berthEntries = getBerthingTimeEntries(reports).filter(e => !fShip || e.ship === fShip);
   berthEntries.forEach(e => {
     const segs = splitByMonth(e.t0, e.t1);
     segs.forEach(seg => {
@@ -3565,7 +3565,7 @@ const handleDownloadExcel = async () => {
   // SHEET 4: DOWNTIME REPORT
   const dtHeaders = ["Nama Kapal", "Start Downtime", "Finish Downtime", "Duration (days)", "Reason", "Category"];
   const dtData = [dtHeaders];
-  const dtEntries = getAllDowntimeEntries(reports);
+  const dtEntries = getAllDowntimeEntries(reports).filter(e => !fShip || e.ship === fShip);
   dtEntries.forEach(e => {
     const segs = splitByMonth(e.t0, e.t1);
     segs.forEach(seg => {

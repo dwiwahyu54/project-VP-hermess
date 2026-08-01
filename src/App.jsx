@@ -4221,8 +4221,8 @@ function downloadDowntimeCSV(rows, filename) {
   rows.forEach(r => {
     const line = [
       r.ship,
-      fmtDateForCSV(r.t0),   // changed from fmtDT
-      fmtDateForCSV(r.t1),   // changed from fmtDT
+      fmtDT(r.t0),
+      fmtDT(r.t1),
       (r.durationH/24).toFixed(2),
       `"${(r.reason||"").replace(/"/g,'""')}"`,
       r.category,
@@ -5531,7 +5531,7 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
                   downloadCSV(
                     ["Nama Kapal","Tanggal","Jenis Laporan","Speed (kts)"],
                     avgSpeedRows,
-                    row => [row.ship, fmtDateForCSV(row.ts), row.label, row.spd.toFixed(2)],
+                    row => [row.ship, fmtDT(row.ts), row.label, row.spd.toFixed(2)],
                     parts.join("_") + ".csv"
                   );
                 }}
@@ -5582,7 +5582,7 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
                     anchorageDetailRows,
                     row => {
                       const d = new Date(row.t0);
-                      return [row.ship, MONTHS[d.getMonth()], d.getFullYear(), fmtDateForCSV(row.t0), fmtDateForCSV(row.t1), (row.hours/24).toFixed(2)];
+                      return [row.ship, MONTHS[d.getMonth()], d.getFullYear(), fmtDT(row.t0), fmtDT(row.t1), (row.hours/24).toFixed(2)];
                     },
                     parts.join("_") + ".csv"
                   );
@@ -5641,7 +5641,7 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
                     berthingDetailRows,
                     row => {
                       const d = new Date(row.t0);
-                      return [row.ship, MONTHS[d.getMonth()], d.getFullYear(), fmtDateForCSV(row.t0), fmtDateForCSV(row.t1), (row.hours/24).toFixed(2)];
+                      return [row.ship, MONTHS[d.getMonth()], d.getFullYear(), fmtDT(row.t0), fmtDT(row.t1), (row.hours/24).toFixed(2)];
                     },
                     parts.join("_") + ".csv"
                   );

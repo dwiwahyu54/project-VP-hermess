@@ -4250,20 +4250,22 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
   const handleSaveConsMe = async (consMeVal, consAeVal) => {
     const key = `${consMeShip}|${consMeYear}|${consMeMonth}`;
     try {
-      // Check if exists first
-      const { data: existing, error: selectError } = await supabase
+      // Check if exists first (limit 1 → aman walau ada duplikat di DB)
+      const { data: existingRows, error: selectError } = await supabase
         .from('cons_me')
         .select('id')
         .eq('ship', consMeShip)
         .eq('year', consMeYear)
         .eq('month', consMeMonth)
-        .maybeSingle();
+        .limit(1);
 
       if (selectError) {
         console.error("Error finding cons_me:", selectError);
         alert("Error: " + selectError.message);
         return;
       }
+
+      const existing = existingRows?.[0] || null;
 
       if (existing) {
         // Update existing
@@ -4290,19 +4292,21 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
     const aeVal = editConsAeRef.current?.value;
     const [ship, year, month] = key.split("|");
     try {
-      const { data: existing, error: selectError } = await supabase
+      const { data: existingRows, error: selectError } = await supabase
         .from('cons_me')
         .select('id')
         .eq('ship', ship)
         .eq('year', Number(year))
         .eq('month', Number(month))
-        .maybeSingle();
+        .limit(1);
 
       if (selectError) {
         console.error("Error finding cons_me:", selectError);
         alert("Error: " + selectError.message);
         return;
       }
+
+      const existing = existingRows?.[0] || null;
 
       if (existing) {
         const { error } = await supabase
@@ -4322,16 +4326,16 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
     try {
       console.log("Deleting cons_me:", { ship, year: Number(year), month: Number(month) });
 
-      // Use maybeSingle() - returns null if no rows, fails if multiple rows
-      const { data: existing, error: selectError } = await supabase
+      // Delete ALL matching rows (aman walau ada duplikat di DB)
+      const { data: existingRows, error: selectError } = await supabase
         .from('cons_me')
         .select('id, ship, year, month')
         .eq('ship', ship)
         .eq('year', Number(year))
         .eq('month', Number(month))
-        .maybeSingle();
+        .limit(50);
 
-      console.log("Query result:", { existing, selectError });
+      console.log("Query result:", { existingRows, selectError });
 
       if (selectError) {
         console.error("Error finding cons_me:", selectError);
@@ -4339,17 +4343,19 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
         return;
       }
 
-      if (!existing) {
+      if (!existingRows || existingRows.length === 0) {
         console.log("No record found in DB, reloading...");
         await loadConsMe();
         return;
       }
 
-      console.log("Deleting record with id:", existing.id);
+      console.log("Deleting records:", existingRows.map(r => r.id));
       const { error: deleteError } = await supabase
         .from('cons_me')
         .delete()
-        .eq('id', existing.id);
+        .eq('ship', ship)
+        .eq('year', Number(year))
+        .eq('month', Number(month));
 
       console.log("Delete result:", { deleteError });
 

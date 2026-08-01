@@ -3409,8 +3409,18 @@ const handleDownloadExcel = async () => {
   ];
   
   const activityData = [activityHeaders];
-  // RUMUS TABE VESSEL ACTIVITY
+  // RUMUS TABEL VESSEL ACTIVITY — identik dengan app
   SHIPS.forEach((ship, idx) => {
+    const mePrev   = ConsMeByShip[ship] != null ? ConsMeByShip[ship].toFixed(0) : "";
+    const aeSeaPrev = PrevSailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (PrevSailingDaysByShip[ship] * 24 * FUEL_PARAMS[ship].ae).toFixed(0) : "";
+    const aePortPrev = ConsMeAePrevByShip[ship] != null && PrevSailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (ConsMeAePrevByShip[ship] - (PrevSailingDaysByShip[ship] * 24 * FUEL_PARAMS[ship].ae)).toFixed(0) : "";
+    const meCur   = ConsMeCurByShip[ship] != null ? ConsMeCurByShip[ship].toFixed(0) : "";
+    const aeSeaCur = SailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (SailingDaysByShip[ship] * 24 * FUEL_PARAMS[ship].ae).toFixed(0) : "";
+    const aePortCur = ConsMeAeCurByShip[ship] != null && SailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.ae ? (ConsMeAeCurByShip[ship] - (SailingDaysByShip[ship] * 24 * FUEL_PARAMS[ship].ae)).toFixed(0) : "";
+    const avgMiles = ConsMeCurByShip[ship] != null && TotalDistanceByShip[ship] ? (ConsMeCurByShip[ship] / TotalDistanceByShip[ship]).toFixed(0) : "";
+    const avgHari  = ConsMeCurByShip[ship] != null && SailingDaysByShip[ship] !== null ? (ConsMeCurByShip[ship] / SailingDaysByShip[ship]).toFixed(0) : "";
+    const targetME = FUEL_PARAMS[ship]?.me ? (FUEL_PARAMS[ship].me * 24).toFixed(0) : "";
+    const realisasi = ConsMeCurByShip[ship] != null && SailingDaysByShip[ship] !== null && FUEL_PARAMS[ship]?.me ? ((ConsMeCurByShip[ship] / SailingDaysByShip[ship]) / (FUEL_PARAMS[ship].me * 24) * 100).toFixed(1) + "%" : "";
     activityData.push([
       idx + 1,
       ship,
@@ -3420,16 +3430,9 @@ const handleDownloadExcel = async () => {
       (DowntimeDaysByShip[ship] || 0).toFixed(2),
       daysInSelectedMonth,
       (TotalDistanceByShip[ship] || 0).toFixed(1),
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",  // 6 kolom BBM (kosong)
-      "",
-      "",
-      (FUEL_PARAMS[ship]?.me ? (FUEL_PARAMS[ship].me * 24).toFixed(2) : ""),
-      "",          // 4 kolom Performance (kosong)
+      mePrev, aeSeaPrev, aePortPrev,
+      meCur, aeSeaCur, aePortCur,
+      avgMiles, avgHari, targetME, realisasi,
       AvgSpeedPrevByShip[ship] || "",
       AvgSpeedByShip[ship] || ""
     ]);
@@ -3450,7 +3453,7 @@ const handleDownloadExcel = async () => {
     "", ""                   // AVG Speed total kosong
   ]);
 
-  // SHEET 2: ANCHORAGE TIME
+  // SHEET 2: ANCHORAGE TIME (netH = segmen − downtime overlap, identik dengan app)
   const anchHeaders = ["Nama Kapal", "Bulan", "Tahun", "Anchorage (EOSV Arrival)", "Berthing (FWE)", "Anchorage Time (hari)"];
   const anchData = [anchHeaders];
   const anchEntries = getAnchorageTimeEntries(reports);
@@ -3460,12 +3463,14 @@ const handleDownloadExcel = async () => {
       const yearOk = !fYear || seg.year === Number(fYear);
       const monthOk = !fMonth || seg.month === Number(fMonth);
       if (yearOk && monthOk) {
-        anchData.push([e.ship, MONTHS_ID[seg.month], seg.year, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (seg.hours/24).toFixed(2)]);
+        const dtH = downtimeHoursInRange(reports, e.ship, seg.start, seg.end);
+        const netH = Math.max(0, seg.hours - dtH);
+        anchData.push([e.ship, MONTHS_ID[seg.month], seg.year, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (netH/24).toFixed(2)]);
       }
     });
   });
 
-  // SHEET 3: BERTHING TIME
+  // SHEET 3: BERTHING TIME (netH = segmen − downtime overlap, identik dengan app)
   const berthHeaders = ["Nama Kapal", "Bulan", "Tahun", "Berthing (FWE)", "Departure (BOSV)", "Berthing Time (hari)"];
   const berthData = [berthHeaders];
   const berthEntries = getBerthingTimeEntries(reports);
@@ -3475,7 +3480,9 @@ const handleDownloadExcel = async () => {
       const yearOk = !fYear || seg.year === Number(fYear);
       const monthOk = !fMonth || seg.month === Number(fMonth);
       if (yearOk && monthOk) {
-        berthData.push([e.ship, MONTHS_ID[seg.month], seg.year, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (seg.hours/24).toFixed(2)]);
+        const dtH = downtimeHoursInRange(reports, e.ship, seg.start, seg.end);
+        const netH = Math.max(0, seg.hours - dtH);
+        berthData.push([e.ship, MONTHS_ID[seg.month], seg.year, fmtDateForCSV(seg.start), fmtDateForCSV(seg.end), (netH/24).toFixed(2)]);
       }
     });
   });
@@ -3497,37 +3504,75 @@ const handleDownloadExcel = async () => {
 
   // DOWNLOAD
 
-  // SHEET 5: RINCIAN TOTAL DISTANCE
+  // SHEET 5: RINCIAN TOTAL DISTANCE (cross-month split identik dengan app)
   const distDetailHeaders = ["Nama Kapal", "Voy", "Tanggal", "Jenis Laporan", "Distance (NM)"];
   const distDetailData = [distDetailHeaders];
-  const distEntries = getTotalDistanceEntries(reports);
+  const distEntries = getTotalDistanceEntries(reports).filter(e => !fShip || e.ship === fShip);
+  const voysForDist = computeVoyages(reports).filter(v => !fShip || v.ship === fShip);
+  const calcEstFromNoonX = (noon) => {
+    if (!noon) return 0;
+    const drun = parseFloat(noon.ttl_dist) || 0;
+    const spd = parseFloat(noon.spd != null && noon.spd !== "" ? noon.spd : noon.avg_spd) || 0;
+    return drun + spd * 12;
+  };
+  const pushDistRow = (ship, voy, ts, dist, label) => {
+    distDetailData.push([ship, voy, fmtDateForCSV(ts), label, dist.toFixed(1)]);
+  };
   distEntries.forEach(e => {
-    const d = new Date(e.ts);
-    const yearOk = !fYear || d.getFullYear() === Number(fYear);
-    const monthOk = !fMonth || d.getMonth() === Number(fMonth);
-    if (yearOk && monthOk) {
-      distDetailData.push([e.ship, e.voy, fmtDateForCSV(e.ts), e.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage", e.dist.toFixed(1)]);
+    const voyObj = voysForDist.find(v => v.ship === e.ship && v.no === e.voy);
+    const depTs = voyObj?.dep?.ts;
+    const arrDate = new Date(e.ts);
+    const arrYear = arrDate.getFullYear(), arrMonth = arrDate.getMonth();
+    if (!depTs) {
+      const yearOk  = !fYear  || arrYear === Number(fYear);
+      const monthOk = !fMonth || arrMonth === Number(fMonth);
+      if (yearOk && monthOk) pushDistRow(e.ship, e.voy, e.ts, e.dist, e.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage");
+      return;
+    }
+    const depDate = new Date(depTs);
+    const depYear = depDate.getFullYear(), depMonth = depDate.getMonth();
+    if (depYear === arrYear && depMonth === arrMonth) {
+      const yearOk  = !fYear  || arrYear === Number(fYear);
+      const monthOk = !fMonth || arrMonth === Number(fMonth);
+      if (yearOk && monthOk) pushDistRow(e.ship, e.voy, e.ts, e.dist, e.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage");
+    } else {
+      const crossingNoon = getNoonForEstimate(reports, e.ship, e.voy, depYear, depMonth);
+      const estCrossDist = calcEstFromNoonX(crossingNoon);
+      const remainder = Math.max(0, e.dist - estCrossDist);
+      const depYearOk  = !fYear  || depYear === Number(fYear);
+      const depMonthOk = !fMonth || depMonth === Number(fMonth);
+      if (depYearOk && depMonthOk && estCrossDist > 0) {
+        pushDistRow(e.ship, e.voy, crossingNoon?.ts || depTs, estCrossDist, "Noon Report (noon_ttl+(spd*12))");
+      }
+      const arrYearOk  = !fYear  || arrYear === Number(fYear);
+      const arrMonthOk = !fMonth || arrMonth === Number(fMonth);
+      if (arrYearOk && arrMonthOk) {
+        pushDistRow(e.ship, e.voy, e.ts, remainder, `${e.type === "arr_berth" ? "Arrival Berthing" : "Arrival Anchorage"} (ttl_dist - (noon_ttl+(spd*12)))`);
+      }
     }
   });
-  // SHEET 6: AVERAGE SPEED
-  const avgSpeedHeaders = ["Nama Kapal", "Voy", "Tanggal", "Sumber", "Avg Speed (kts)"];
-  const avgSpeedData = [avgSpeedHeaders];
-  const tYr = Number(fYear);
-  const tMth = fMonth !== "" ? Number(fMonth) : -1;
-  reports
-    .filter(r => ["arr_berth","arr_anchor"].includes(r.type))
-    .filter(r => !fShip || r.ship === fShip)
-    .filter(r => {
-      if (tMth < 0) return true;
-      const d = new Date(r.ts);
-      return d.getFullYear() === tYr && d.getMonth() === tMth;
-    })
-    .filter(r => { const s = parseFloat(r.avg_spd || r.spd); return !isNaN(s) && s > 0; })
-    .forEach(r => {
-      const s = parseFloat(r.avg_spd || r.spd);
-      const rt = RT.find(t => t.id === r.type);
-      avgSpeedData.push([r.ship, r.voy || "", fmtDateForCSV(r.ts), rt?.short || r.type, s.toFixed(2)]);
+  // Underway voyages (no arrival): estimasi noon terakhir di bulan filter
+  if (fYear && fMonth !== "") {
+    const targetYear  = Number(fYear);
+    const targetMonth = Number(fMonth);
+    voysForDist.forEach(v => {
+      const alreadyHasArrival = distEntries.some(e => e.ship === v.ship && e.voy === v.no);
+      if (alreadyHasArrival) return;
+      const noon = getNoonForEstimate(reports, v.ship, v.no, targetYear, targetMonth);
+      if (!noon) return;
+      const estDist = calcEstFromNoonX(noon);
+      if (!(estDist > 0)) return;
+      pushDistRow(v.ship, v.no, noon.ts, estDist, "Noon Report (noon_ttl+(spd*12))");
     });
+  }
+  // SHEET 6: AVERAGE SPEED (identik dengan kolom tabel app: prev & cur per kapal)
+  const avgSpeedHeaders = ["Nama Kapal", `AVG Speed ${prevLabel}`, `AVG Speed ${curLabel}`];
+  const avgSpeedData = [avgSpeedHeaders];
+  SHIPS.forEach(ship => {
+    if (!fShip || fShip === ship) {
+      avgSpeedData.push([ship, AvgSpeedPrevByShip[ship] || "", AvgSpeedByShip[ship] || ""]);
+    }
+  });
   const sheets = [
     { name: "Vessel Activity", data: activityData, widths: [5, 20, 14, 14, 14, 14, 10, 12, 12, 14, 14, 12, 14, 14, 14, 12, 12, 12, 12, 12] },
     { name: "Anchorage Time", data: anchData, widths: [18, 12, 8, 22, 22, 16] },

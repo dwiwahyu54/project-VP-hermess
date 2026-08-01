@@ -3029,20 +3029,95 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     }
   });
 
-  // Sailing days for prev month (for AE at Sea prev calculation)
-  // Scaled proportionally from current sailing days by month length
+  // Sailing days untuk bulan PREVIOUS — dihitung AKTUAL (bukan proporsional),
+  // supaya filter bulan berjalan (mis. Agustus) tetap menampilkan data Juli.
+  const tYearNow = fYear ? Number(fYear) : new Date().getFullYear();
+  const tMonthNow = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
+  const prevMonthIdx = tMonthNow - 1 < 0 ? 11 : tMonthNow - 1;
+  const prevYearIdx = tMonthNow - 1 < 0 ? tYearNow - 1 : tYearNow;
+  const prevDaysInMonth = new Date(prevYearIdx, prevMonthIdx + 1, 0).getDate();
+
+  // 1) Prev Downtime (hari)
+  const PrevDowntimeDaysByShip = {};
+  [...new Set(voys.map(v => v.ship))].forEach(ship => {
+    const shipVoys = (voys || []).filter(v => v.ship === ship);
+    let matchedH = 0;
+    shipVoys.forEach(v => {
+      (v.dts || []).forEach(dt => {
+        if (!dt.t0 || !dt.t1) return;
+        const segs = splitByMonth(dt.t0, dt.t1);
+        segs.forEach(seg => {
+          if (seg.year === prevYearIdx && seg.month === prevMonthIdx) matchedH += seg.hours;
+        });
+      });
+    });
+    PrevDowntimeDaysByShip[ship] = matchedH / 24;
+  });
+
+  // 2) Prev Anchorage (hari)
+  const PrevAnchorageDaysByShip = {};
+  [...new Set(voys.map(v => v.ship))].forEach(ship => {
+    const shipVoys = (voys || []).filter(v => v.ship === ship);
+    let anchH = 0;
+    shipVoys.forEach(v => {
+      const arrAnc = (v.list||[]).find(r => r.type === "arr_anchor");
+      if (!arrAnc) return;
+      const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
+      if (!t0) return;
+      const shiftBerth = getFirstShiftBerth(v.list);
+      const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
+      const segs = splitByMonth(t0, t1);
+      segs.forEach(seg => {
+        if (seg.year === prevYearIdx && seg.month === prevMonthIdx) {
+          const dtH = downtimeHoursInRange(reports, ship, seg.start, seg.end);
+          anchH += Math.max(0, seg.hours - dtH);
+        }
+      });
+    });
+    PrevAnchorageDaysByShip[ship] = anchH / 24;
+  });
+
+  // 3) Prev Berthing (jam)
+  const PrevBerthingHoursByShip = {};
+  [...new Set(voys.map(v => v.ship))].forEach(ship => {
+    const shipVoys = voys.filter(v => v.ship === ship);
+    shipVoys.sort((a,b) => new Date(a.dep?.ts||a.list[0]?.ts||0)-new Date(b.dep?.ts||b.list[0]?.ts||0));
+    shipVoys.forEach((v, idx) => {
+      const berthReport = getBerthingStartReport(v.list);
+      if (!berthReport) return;
+      const t0 = berthReport[evKey("FWE")] || berthReport.ts;
+      if (!t0) return;
+      const nextV = shipVoys[idx+1];
+      const t1 = nextV?.bosv || new Date().toISOString();
+      const segs = splitByMonth(t0, t1);
+      segs.forEach(seg => {
+        if (seg.year === prevYearIdx && seg.month === prevMonthIdx) {
+          const dtH = downtimeHoursInRange(reports, ship, seg.start, seg.end);
+          PrevBerthingHoursByShip[ship] = (PrevBerthingHoursByShip[ship] || 0) + Math.max(0, seg.hours - dtH);
+        }
+      });
+    });
+  });
+
+  // 4) Prev At Port + Prev Sailing (butuh RH ME bulan prev)
+  const PrevAtPortDaysByShip = {};
   const PrevSailingDaysByShip = {};
   SHIPS.forEach(ship => {
-    const tYear = fYear ? Number(fYear) : new Date().getFullYear();
-    const tMonth = fMonth !== "" ? Number(fMonth) : new Date().getMonth();
-    const prevMonth = tMonth - 1 < 0 ? 11 : tMonth - 1;
-    const prevYear = tMonth - 1 < 0 ? tYear - 1 : tYear;
-    const prevDaysInMonth = new Date(prevYear, prevMonth + 1, 0).getDate();
-    if (SailingDaysByShip[ship] !== null && daysInSelectedMonth > 0) {
-      PrevSailingDaysByShip[ship] = Math.max(0, prevDaysInMonth * SailingDaysByShip[ship] / daysInSelectedMonth);
+    const berthingD = (PrevBerthingHoursByShip[ship] || 0) / 24;
+    const anchD = PrevAnchorageDaysByShip[ship] || 0;
+    const dtD = PrevDowntimeDaysByShip[ship] || 0;
+    const prevKey = `${ship}|${prevYearIdx}|${prevMonthIdx}`;
+    const rhMeVal = runningHours?.[prevKey]?.me;
+    if (rhMeVal === undefined || rhMeVal === null || rhMeVal === "") {
+      PrevAtPortDaysByShip[ship] = null;
     } else {
-      PrevSailingDaysByShip[ship] = null;
+      const rhMe = parseFloat(rhMeVal) || 0;
+      const atPortD = berthingD - ((rhMe / 24) - (prevDaysInMonth - dtD - berthingD - anchD));
+      PrevAtPortDaysByShip[ship] = atPortD;
     }
+    PrevSailingDaysByShip[ship] = PrevAtPortDaysByShip[ship] !== null
+      ? Math.max(0, prevDaysInMonth - PrevAtPortDaysByShip[ship] - anchD - dtD)
+      : null;
   });
 
   // Per-ship Total Distance (NM) — cross-month split same as Management Report detail

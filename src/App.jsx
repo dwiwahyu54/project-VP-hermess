@@ -4326,14 +4326,14 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
     try {
       console.log("Deleting cons_me:", { ship, year: Number(year), month: Number(month) });
 
-      // Delete ALL matching rows (aman walau ada duplikat di DB)
+      // Use limit(1) - returns first row, tidak error walau ada duplikat di DB
       const { data: existingRows, error: selectError } = await supabase
         .from('cons_me')
         .select('id, ship, year, month')
         .eq('ship', ship)
         .eq('year', Number(year))
         .eq('month', Number(month))
-        .limit(50);
+        .limit(1);
 
       console.log("Query result:", { existingRows, selectError });
 
@@ -4343,19 +4343,19 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
         return;
       }
 
-      if (!existingRows || existingRows.length === 0) {
+      const existing = existingRows?.[0] || null;
+
+      if (!existing) {
         console.log("No record found in DB, reloading...");
         await loadConsMe();
         return;
       }
 
-      console.log("Deleting records:", existingRows.map(r => r.id));
+      console.log("Deleting record with id:", existing.id);
       const { error: deleteError } = await supabase
         .from('cons_me')
         .delete()
-        .eq('ship', ship)
-        .eq('year', Number(year))
-        .eq('month', Number(month));
+        .eq('id', existing.id);
 
       console.log("Delete result:", { deleteError });
 

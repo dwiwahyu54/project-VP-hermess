@@ -4340,7 +4340,8 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
       const map = {};
       (data || []).forEach(row => {
         const ship = String(row.ship || "").replace(/^MV\s+/i, "").trim();
-        const key = `${ship}|${Number(row.year)}|${Number(row.month)}`;
+        // Supabase month 1–12 → state/UI month index 0–11
+        const key = `${ship}|${Number(row.year)}|${Number(row.month) - 1}`;
         const prev = map[key] || { cons_me: "", cons_ae: "" };
         // Jika ada duplikat, jangan biarkan baris kosong menimpa nilai yang sudah ada.
         map[key] = {
@@ -4388,7 +4389,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
         .select('id')
         .eq('ship', consMeShip)
         .eq('year', consMeYear)
-        .eq('month', consMeMonth)
+        .eq('month', consMeMonth + 1)
         .limit(1);
 
       if (selectError) {
@@ -4410,7 +4411,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
         // Insert new
         const { error } = await supabase
           .from('cons_me')
-          .insert({ ship: consMeShip, year: consMeYear, month: consMeMonth, cons_me: consMeVal === "" ? null : Number(consMeVal), cons_ae: consAeVal === "" ? null : Number(consAeVal) });
+          .insert({ ship: consMeShip, year: consMeYear, month: consMeMonth + 1, cons_me: consMeVal === "" ? null : Number(consMeVal), cons_ae: consAeVal === "" ? null : Number(consAeVal) });
         if (error) throw error;
       }
       setConsMe(prev => ({ ...prev, [key]: { cons_me: consMeVal, cons_ae: consAeVal } }));
@@ -4429,7 +4430,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
         .select('id')
         .eq('ship', ship)
         .eq('year', Number(year))
-        .eq('month', Number(month))
+        .eq('month', Number(month) + 1)
         .limit(1);
 
       if (selectError) {
@@ -4464,7 +4465,7 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
         .select('id, ship, year, month')
         .eq('ship', ship)
         .eq('year', Number(year))
-        .eq('month', Number(month))
+        .eq('month', Number(month) + 1)
         .limit(1);
 
       console.log("Query result:", { existingRows, selectError });
@@ -5831,7 +5832,8 @@ export default function App() {
       const map = {};
       (data || []).forEach(row => {
         const ship = String(row.ship || "").replace(/^MV\s+/i, "").trim();
-        const key = `${ship}|${Number(row.year)}|${Number(row.month)}`;
+        // Supabase month 1–12 → state/UI month index 0–11
+        const key = `${ship}|${Number(row.year)}|${Number(row.month) - 1}`;
         const prev = map[key] || { cons_me: "", cons_ae: "" };
         // Jika ada duplikat, pertahankan nilai non-kosong.
         map[key] = {

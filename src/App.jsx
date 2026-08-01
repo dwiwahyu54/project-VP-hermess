@@ -5450,11 +5450,8 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
       {showDetail && (
         <div>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <div style={{ marginBottom:10 }}>
             <div style={{ fontSize:12, fontWeight:700, color:C.accent }}>Detail Downtime</div>
-            <button style={{ ...ss.btn, fontSize:11, padding:"6px 14px" }} onClick={handleExport}>
-              ⬇️ Download CSV
-            </button>
           </div>
           <div style={{ borderRadius:12, border:`1px solid ${C.border}`, overflow:"auto" }}>
             <table className="voyage-main-table" style={{ ...ss.tbl, minWidth:640 }}>
@@ -5530,25 +5527,8 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
       {showAvgSpeedDetail && (
         <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <div style={{ marginBottom:10 }}>
             <div style={{ fontSize:13, fontWeight:700 }}>📋 Rincian Average Speed</div>
-            {avgSpeedRows.length > 0 && (
-              <button
-                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
-                onClick={() => {
-                  const parts = ["avg-speed"];
-                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
-                  if (fYear) parts.push(fYear);
-                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
-                  downloadCSV(
-                    ["Nama Kapal","Tanggal","Jenis Laporan","Speed (kts)"],
-                    avgSpeedRows,
-                    row => [row.ship, fmtDT(row.ts), row.label, row.spd.toFixed(2)],
-                    parts.join("_") + ".csv"
-                  );
-                }}
-              >⬇️ Download CSV</button>
-            )}
           </div>
           {avgSpeedRows.length === 0 ? (
             <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
@@ -5579,28 +5559,8 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
       {showAnchorageDetail && (
         <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <div style={{ marginBottom:10 }}>
             <div style={{ fontSize:13, fontWeight:700 }}>📋 Rincian Anchorage Time</div>
-            {anchorageDetailRows.length > 0 && (
-              <button
-                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
-                onClick={() => {
-                  const parts = ["anchorage-time"];
-                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
-                  if (fYear) parts.push(fYear);
-                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
-                  downloadCSV(
-                    ["Nama Kapal","Bulan","Tahun","Anchorage (EOSV Arrival)","Berthing (FWE Shifting to berth)","Anchorage Time (hari)"],
-                    anchorageDetailRows,
-                    row => {
-                      const d = new Date(row.t0);
-                      return [row.ship, MONTHS[d.getMonth()], d.getFullYear(), fmtDT(row.t0), fmtDT(row.t1), (row.hours/24).toFixed(2)];
-                    },
-                    parts.join("_") + ".csv"
-                  );
-                }}
-              >⬇️ Download CSV</button>
-            )}
           </div>
           {anchorageDetailRows.length === 0 ? (
             <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
@@ -5638,28 +5598,8 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
       {showBerthingDetail && (
         <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <div style={{ marginBottom:10 }}>
             <div style={{ fontSize:13, fontWeight:700 }}>📋 Rincian Berthing Time</div>
-            {berthingDetailRows.length > 0 && (
-              <button
-                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
-                onClick={() => {
-                  const parts = ["berthing-time"];
-                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
-                  if (fYear) parts.push(fYear);
-                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
-                  downloadCSV(
-                    ["Nama Kapal","Bulan","Tahun","Berthing (FWE shift to berth/arr berth)","Departure (BOSV departure next voyage)","Berthing Time (hari)"],
-                    berthingDetailRows,
-                    row => {
-                      const d = new Date(row.t0);
-                      return [row.ship, MONTHS[d.getMonth()], d.getFullYear(), fmtDT(row.t0), fmtDT(row.t1), (row.hours/24).toFixed(2)];
-                    },
-                    parts.join("_") + ".csv"
-                  );
-                }}
-              >⬇️ Download CSV</button>
-            )}
           </div>
           {berthingDetailRows.length === 0 ? (
             <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>
@@ -5698,32 +5638,8 @@ function ManagementReport({ reports, runningHours, user, consMe }) {
 
       {showDistanceDetail && (
         <div style={{ ...ss.card(), marginBottom:16, overflowX:"auto" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <div style={{ marginBottom:10 }}>
             <div style={{ fontSize:13, fontWeight:700 }}>📏 Rincian Jarak Tempuh (Total Distance)</div>
-            {distanceDetailRows.length > 0 && (
-              <button
-                style={{ ...ss.btnG, fontSize:11, padding:"5px 12px" }}
-                onClick={() => {
-                  const parts = ["distance"];
-                  if (fShip) parts.push(fShip.replace(/\s+/g,"_"));
-                  if (fYear) parts.push(fYear);
-                  if (fMonth) parts.push(MONTHS[Number(fMonth)]);
-                  downloadCSV(
-                    ["Nama Kapal","Voy","Tanggal","Jenis Laporan","Distance (NM)"],
-                    distanceDetailRows,
-                    row => {
-                      const typeLabel = row.label
-                        || (row.type === "arr_berth" ? "Arrival Berthing"
-                          : row.type === "arr_anchor" ? "Arrival Anchorage"
-                          : row.type === "noon_est" ? "Noon Report (drun+(spd*12))"
-                          : String(row.type || "—"));
-                      return [row.ship, row.voy, fmtDT(row.ts), typeLabel, Number(row.dist).toFixed(1)];
-                    },
-                    parts.join("_") + ".csv"
-                  );
-                }}
-              >⬇️ Download CSV</button>
-            )}
           </div>
           {distanceDetailRows.length === 0 ? (
             <div style={{ fontSize:11, color:C.muted, padding:"8px 0" }}>Tidak ada data untuk filter ini.</div>

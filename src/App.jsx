@@ -4339,7 +4339,14 @@ function RHConsPage({ runningHours, setRunningHours, user, consMe, setConsMe }) 
       if (error) throw error;
       const map = {};
       (data || []).forEach(row => {
-        map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "", cons_ae: row.cons_ae ?? "" };
+        const ship = String(row.ship || "").replace(/^MV\s+/i, "").trim();
+        const key = `${ship}|${Number(row.year)}|${Number(row.month)}`;
+        const prev = map[key] || { cons_me: "", cons_ae: "" };
+        // Jika ada duplikat, jangan biarkan baris kosong menimpa nilai yang sudah ada.
+        map[key] = {
+          cons_me: row.cons_me !== null && row.cons_me !== "" ? row.cons_me : prev.cons_me,
+          cons_ae: row.cons_ae !== null && row.cons_ae !== "" ? row.cons_ae : prev.cons_ae,
+        };
       });
       console.log("cons_me map built:", map);
       setConsMe(map);
@@ -5823,7 +5830,14 @@ export default function App() {
       if (error) throw error;
       const map = {};
       (data || []).forEach(row => {
-        map[`${row.ship}|${row.year}|${row.month}`] = { cons_me: row.cons_me ?? "", cons_ae: row.cons_ae ?? "" };
+        const ship = String(row.ship || "").replace(/^MV\s+/i, "").trim();
+        const key = `${ship}|${Number(row.year)}|${Number(row.month)}`;
+        const prev = map[key] || { cons_me: "", cons_ae: "" };
+        // Jika ada duplikat, pertahankan nilai non-kosong.
+        map[key] = {
+          cons_me: row.cons_me !== null && row.cons_me !== "" ? row.cons_me : prev.cons_me,
+          cons_ae: row.cons_ae !== null && row.cons_ae !== "" ? row.cons_ae : prev.cons_ae,
+        };
       });
       setConsMe(map);
     } catch (err) { console.error("Error loading cons_me:", err); }

@@ -2769,12 +2769,15 @@ function Dashboard({ reports, onNew, user, runningHours, consMe }) {
 
 // === VOYAGE SUMMARY WITH FILTERS ================================================
 function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const defaultMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const defaultYear = currentMonth === 0 ? currentYear - 1 : currentYear;
   
   const [fShip, setFShip] = useState("");
-  const [fYear, setFYear] = useState(String(currentYear)); // Default tahun ini
-  const [fMonth, setFMonth] = useState(String(currentMonth)); // Default bulan ini
+  const [fYear, setFYear] = useState(String(defaultYear)); // Default tahun previous month
+  const [fMonth, setFMonth] = useState(String(defaultMonth)); // Default previous month
 
 
   const computed = (({ fShip, fYear, fMonth, voys, reports }) => {

@@ -2924,31 +2924,21 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     DowntimeDaysByShip[ship] = matchedH / 24;
   });
 
-  // Per-ship Anchorage (hari): SBE/EOSV arr_anchor → FWE shift_berth − downtime in that window
-  // Downtime that crosses FWE is auto-split (only portion before FWE counts here)
+  // Per-ship Anchorage (hari), memakai helper KPI yang sama dengan rincian/Excel:
+  // via anchorage = Arrival Anchorage SBE/EOSV → first shift_berth FWE;
+  // direct berthing = Arrival Berthing SBE/EOSV → FWE; dikurangi downtime overlap.
   const AnchorageDaysByShip = {};
-  [...new Set(voys.map(v => v.ship))].forEach(ship => {
-    const shipVoys = (voys || []).filter(v => v.ship === ship);
-    let anchH = 0;
-    shipVoys.forEach(v => {
-      const arrAnc = (v.list||[]).find(r => r.type === "arr_anchor");
-      if (!arrAnc) return;
-      const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
-      if (!t0) return;
-      // FIRST shift_berth FWE (multi shift still one voyage until Compl Load)
-      const shiftBerth = getFirstShiftBerth(v.list);
-      const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
-      const segs = splitByMonth(t0, t1);
-      segs.forEach(seg => {
-        const yearOk = !fYear || seg.year === Number(fYear);
-        const monthOk = !fMonth || seg.month === Number(fMonth);
-        if (yearOk && monthOk) {
-          const dtH = downtimeHoursInRange(reports, ship, seg.start, seg.end);
-          anchH += Math.max(0, seg.hours - dtH);
-        }
-      });
+  SHIPS.forEach(ship => { AnchorageDaysByShip[ship] = 0; });
+  getAnchorageTimeEntries(reports).forEach(e => {
+    const segs = splitByMonth(e.t0, e.t1);
+    segs.forEach(seg => {
+      const yearOk = !fYear || seg.year === Number(fYear);
+      const monthOk = !fMonth || seg.month === Number(fMonth);
+      if (yearOk && monthOk) {
+        const dtH = downtimeHoursInRange(reports, e.ship, seg.start, seg.end);
+        AnchorageDaysByShip[e.ship] = (AnchorageDaysByShip[e.ship] || 0) + Math.max(0, seg.hours - dtH) / 24;
+      }
     });
-    AnchorageDaysByShip[ship] = anchH / 24;
   });
 
   // Per-ship Berthing (hours): FWE shift_berth/arr_berth → BOSV next voyage − downtime in window
@@ -3054,27 +3044,16 @@ function VoyageSummary({ reports, voys, user, runningHours, consMe }) {
     PrevDowntimeDaysByShip[ship] = matchedH / 24;
   });
 
-  // 2) Prev Anchorage (hari)
+  // 2) Prev Anchorage (hari) — helper yang sama, termasuk direct berthing
   const PrevAnchorageDaysByShip = {};
-  [...new Set(voys.map(v => v.ship))].forEach(ship => {
-    const shipVoys = (voys || []).filter(v => v.ship === ship);
-    let anchH = 0;
-    shipVoys.forEach(v => {
-      const arrAnc = (v.list||[]).find(r => r.type === "arr_anchor");
-      if (!arrAnc) return;
-      const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
-      if (!t0) return;
-      const shiftBerth = getFirstShiftBerth(v.list);
-      const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
-      const segs = splitByMonth(t0, t1);
-      segs.forEach(seg => {
-        if (seg.year === prevYearIdx && seg.month === prevMonthIdx) {
-          const dtH = downtimeHoursInRange(reports, ship, seg.start, seg.end);
-          anchH += Math.max(0, seg.hours - dtH);
-        }
-      });
+  SHIPS.forEach(ship => { PrevAnchorageDaysByShip[ship] = 0; });
+  getAnchorageTimeEntries(reports).forEach(e => {
+    splitByMonth(e.t0, e.t1).forEach(seg => {
+      if (seg.year === prevYearIdx && seg.month === prevMonthIdx) {
+        const dtH = downtimeHoursInRange(reports, e.ship, seg.start, seg.end);
+        PrevAnchorageDaysByShip[e.ship] = (PrevAnchorageDaysByShip[e.ship] || 0) + Math.max(0, seg.hours - dtH) / 24;
+      }
     });
-    PrevAnchorageDaysByShip[ship] = anchH / 24;
   });
 
   // 3) Prev Berthing (jam)
@@ -4068,16 +4047,17 @@ function getBerthingStartReport(list) {
 // ANCHORAGE TIME (Management Report + Vessel Report)
 // =============================================================================
 // DEFINISI KPI:
-//   Anchorage Time = SBE/EOSV (Arrival Anchorage)
-//                    → FWE (Shifting to Berth PERTAMA)
-//                    − downtime yang jatuh di interval itu
+//   A) Via Anchorage:
+//      SBE/EOSV Arrival Anchorage → FWE Shifting to Berth PERTAMA
+//   B) Direct Berthing / Arrival Berthing:
+//      SBE/EOSV Arrival Berthing → FWE Arrival Berthing
+//   Keduanya dikurangi downtime yang jatuh di interval tersebut.
 //
 // TIDAK dihitung sebagai anchorage KPI:
-//   - Direct arrival berthing (tanpa arr_anchor)
 //   - Shifting to anchorage SETELAH pernah berth (re-anchor) → itu status
 //     operasional, bukan "arrival anchorage" di rumus management
 //
-// Jika belum ada shift_berth: t1 = sekarang (masih di anchorage, open-ended)
+// Jika Arrival Anchorage belum memiliki shift_berth: t1 = sekarang.
 // Split per bulan: splitByMonth(t0,t1) lalu potong downtime per segmen bulan.
 function getAnchorageTimeEntries(reports) {
   // Cross-year fix: gabung semua list voyage berdasarkan ship+voy (abaikan tahun)
@@ -4091,15 +4071,33 @@ function getAnchorageTimeEntries(reports) {
   });
   const entries = [];
   Object.entries(byShipVoy).forEach(([key, list]) => {
-    const arrAnc = (list || []).find(r => r.type === "arr_anchor");
-    if (!arrAnc) return;
-    const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
-    if (!t0) return;
-    // FIRST shift_berth across ALL year groups
-    const shiftBerth = getFirstShiftBerth(list);
-    const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
     const [ship, voy] = key.split("||");
-    entries.push({ ship, voy: Number(voy), t0, t1 });
+    const mergedList = list || [];
+    const arrAnc = mergedList.find(r => r.type === "arr_anchor");
+
+    if (arrAnc) {
+      // Via anchorage: SBE/EOSV Arrival Anchorage → FWE shift_berth pertama.
+      const t0 = arrAnc[evKey("SBE/EOSV")] || arrAnc.ts;
+      if (!t0) return;
+      const shiftBerth = getFirstShiftBerth(mergedList);
+      const t1 = (shiftBerth && (shiftBerth[evKey("FWE")] || shiftBerth.ts)) || new Date().toISOString();
+      if (new Date(t1) > new Date(t0)) {
+        entries.push({ ship, voy: Number(voy), t0, t1, source: "arrival_anchor" });
+      }
+      return;
+    }
+
+    // Direct Berthing: SBE/EOSV → FWE dari laporan Arrival Berthing.
+    const directBerths = mergedList
+      .filter(r => r.type === "arr_berth")
+      .sort((a,b) => new Date(a[evKey("SBE/EOSV")] || a.ts || 0) - new Date(b[evKey("SBE/EOSV")] || b.ts || 0));
+    const arrBerth = directBerths[0];
+    if (!arrBerth) return;
+    const t0 = arrBerth[evKey("SBE/EOSV")] || arrBerth.ts;
+    const t1 = arrBerth[evKey("FWE")] || arrBerth.ts;
+    if (t0 && t1 && new Date(t1) > new Date(t0)) {
+      entries.push({ ship, voy: Number(voy), t0, t1, source: "arrival_berth" });
+    }
   });
   return entries;
 }

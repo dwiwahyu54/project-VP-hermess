@@ -5947,21 +5947,17 @@ export default function App() {
               type="button"
               style={groupBtn(isVoyagePage)}
               onClick={() => {
-                if (!isVoyagePage) {
-                  setVpOpen(true);
-                  setPage("dashboard");
-                } else {
-                  setVpOpen(v => !v);
-                }
+                setVpOpen(true);
+                if (!isVoyagePage) setPage("dashboard");
               }}
             >
               <span style={{ display:"flex", alignItems:"center", gap:9 }}>
                 <span>🚢</span><span>Voyage Portal</span>
               </span>
-              <span style={{ fontSize:10, color:C.muted }}>{vpOpen || isVoyagePage ? "▾" : "▸"}</span>
+              <span style={{ fontSize:10, color:C.muted }}>{vpOpen ? "▾" : "▸"}</span>
             </button>
 
-            {(vpOpen || isVoyagePage) && voyageNav.map(n => (
+            {vpOpen && voyageNav.map(n => (
               <button key={n.id} type="button" style={subBtn(page===n.id || (n.id==="log" && page==="edit"))} onClick={() => goVoyage(n.id)}>
                 <span>{n.i}</span><span>{n.l}</span>
               </button>
@@ -5971,7 +5967,7 @@ export default function App() {
             <button
               type="button"
               style={groupBtn(page==="nc")}
-              onClick={() => setPage("nc")}
+              onClick={() => { setVpOpen(false); setPage("nc"); }}
             >
               <span style={{ display:"flex", alignItems:"center", gap:9 }}>
                 <span>🗄️</span><span>Database NC</span>
@@ -5997,13 +5993,13 @@ export default function App() {
             const short = ({ dashboard:"Home", new:"Buat", log:"Log", rh:"RH", mgmt:"Mgmt" })[n.id] || n.l;
             const active = page===n.id || (n.id==="log" && page==="edit");
             return (
-              <button key={n.id} type="button" style={ss.bottomNavItem(active)} onClick={() => setPage(n.id)}>
+              <button key={n.id} type="button" style={ss.bottomNavItem(active)} onClick={() => goVoyage(n.id)}>
                 <span style={{ fontSize:16, lineHeight:1, display:"block" }}>{n.i}</span>
                 <span style={{ fontSize:9, lineHeight:1.1, display:"block", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{short}</span>
               </button>
             );
           })}
-          <button type="button" style={ss.bottomNavItem(page==="nc")} onClick={() => setPage("nc")}>
+          <button type="button" style={ss.bottomNavItem(page==="nc")} onClick={() => { setVpOpen(false); setPage("nc"); }}>
             <span style={{ fontSize:16, lineHeight:1, display:"block" }}>🗄️</span>
             <span style={{ fontSize:9, lineHeight:1.1, display:"block", maxWidth:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>NC</span>
           </button>
